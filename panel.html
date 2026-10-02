@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Counterpoint</title>
+  <link rel="stylesheet" href="panel.css">
+</head>
+<body>
+  <header>
+    <h1>Counter<span>point</span></h1>
+    <button id="gear" title="Settings" aria-label="Settings">⚙</button>
+  </header>
+
+  <section id="settings" hidden>
+    <label>Model
+      <select id="provider"></select>
+    </label>
+    <label id="keyRow">API key
+      <input id="key" type="password" autocomplete="off" placeholder="Paste your key">
+    </label>
+    <label>Model name
+      <input id="model" type="text">
+    </label>
+    <p class="hint">Your key stays in this browser and is only sent to that provider. You pay them directly.</p>
+    <button id="save">Save</button>
+  </section>
+
+  <main id="out">
+    <p class="empty">Click the Counterpoint button on any page (or press Alt+Shift+C). Or highlight text, right-click, and pick “Counterpoint this.”</p>
+  </main>
+
+  <footer id="foot" hidden>
+    <span id="source"></span>
+    <button id="again">Run again</button>
+  </footer>
+
+  <script type="module" src="panel.js"></script>
+</body>
+</html>
