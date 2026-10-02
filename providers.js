@@ -42,19 +42,20 @@ const CHROME_LANGS = {
   expectedOutputs: [{ type: "text", languages: ["en"] }],
 };
 
-// Asking with language hints can report a pending download even when the base
-// model is installed, so fall back to asking without them.
+// Chrome wants the output language named. Some installs report a pending
+// download when input languages are named too, so fall back to output only.
+const CHROME_OUTPUT_ONLY = { expectedOutputs: CHROME_LANGS.expectedOutputs };
 let chromeOptions = CHROME_LANGS;
 export let chromeDetail = "";
 
 // "missing" | "unavailable" | "downloadable" | "downloading" | "available"
 export async function chromeModelState() {
   if (typeof LanguageModel === "undefined") return (chromeDetail = "LanguageModel missing"), "missing";
-  const withLangs = await LanguageModel.availability(CHROME_LANGS);
-  const plain = withLangs === "available" ? withLangs : await LanguageModel.availability();
-  chromeDetail = withLangs === plain ? withLangs : `${withLangs} with English hint, ${plain} without`;
-  chromeOptions = withLangs !== "available" && plain === "available" ? {} : CHROME_LANGS;
-  return withLangs === "available" ? withLangs : plain === "available" ? plain : withLangs;
+  const full = await LanguageModel.availability(CHROME_LANGS);
+  const outOnly = full === "available" ? full : await LanguageModel.availability(CHROME_OUTPUT_ONLY);
+  chromeDetail = full === outOnly ? full : `${full} with input hint, ${outOnly} without`;
+  chromeOptions = full !== "available" && outOnly === "available" ? CHROME_OUTPUT_ONLY : CHROME_LANGS;
+  return full === "available" ? full : outOnly === "available" ? outOnly : full;
 }
 
 async function runChrome(system, user, _s, onStatus) {
