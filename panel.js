@@ -77,6 +77,9 @@ async function run(job) {
   const tick = () => {
     const secs = Math.round((Date.now() - started) / 1000);
     show(secs >= 3 ? `${status} ${secs}s` : status, "status");
+    if (s.provider === "chrome" && secs >= 30) {
+      out.insertAdjacentHTML("beforeend", `<p class="hint">Taking long? Chrome may need a relaunch, or you can add an API key in settings for a faster answer.</p>`);
+    }
   };
   tick();
   const timer = setInterval(() => current === job ? tick() : clearInterval(timer), 1000);

@@ -45,6 +45,7 @@ export async function chromeModelState() {
 }
 
 async function runChrome(system, user, _s, onStatus) {
+  onStatus?.("Checking Chrome's built-in model…");
   const state = await chromeModelState();
   if (state === "missing") {
     throw new Error("Chrome built-in AI isn't available in this Chrome. Update Chrome, or pick an API key provider.");
@@ -52,9 +53,13 @@ async function runChrome(system, user, _s, onStatus) {
   if (state === "unavailable") {
     throw new Error("This device can't run Chrome's built-in model. Pick an API key provider instead.");
   }
-  const langs = CHROME_LANGS;
+  onStatus?.(
+    state === "available"
+      ? "Starting Chrome's model…"
+      : "Chrome is downloading its model (a few GB, first time only). This can take a while…"
+  );
   const session = await LanguageModel.create({
-    ...langs,
+    ...CHROME_LANGS,
     initialPrompts: [{ role: "system", content: system }],
     monitor(m) {
       m.addEventListener("downloadprogress", (e) =>
