@@ -6,7 +6,7 @@ Reading "buy this"? It tells you the best case for not buying. Reading "X will w
 
 Two ways to use it:
 
-- **Chrome extension** (this folder). Click the button on any page, press Alt+Shift+C, or highlight text and right-click "Counterpoint this".
+- **Chrome extension** (this folder). Click the button on any page, press Alt+Shift+C, or highlight text and right-click "Counterpoint this". It shows what the page says, the other side, the strongest arguments, what would settle it, and searches to read more. Ask follow-up questions in the panel. When real numbers help, it draws a small chart or comparison table.
 - **Agent skill** ([skills/counterpoint](skills/counterpoint/SKILL.md)). Drop it into Claude Code (`~/.claude/skills/`) or any agent that reads `SKILL.md` files, then say "counterpoint this".
 
 ## How it's different
@@ -42,4 +42,4 @@ Counterpoint only reads a page when you click it. The page text goes to the mode
 
 ## License
 
-MIT. Bundled fonts, [Schibsted Grotesk](https://fonts.google.com/specimen/Schibsted+Grotesk) and [Newsreader](https://fonts.google.com/specimen/Newsreader), are under the SIL Open Font License (see `fonts/`).
+MIT

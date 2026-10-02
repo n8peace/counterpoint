@@ -1,5 +1,6 @@
-// Bring-your-own-model. Each provider takes (system, user, settings) and
-// returns plain text. Keys live in chrome.storage.local and only ever go to
+// Bring-your-own-model. Each provider takes (system, messages, settings) and
+// returns plain text. messages alternate user/assistant and end with user.
+// Keys live in chrome.storage.local and only ever go to
 // the provider's own API.
 
 export const PROVIDERS = {
@@ -9,6 +10,7 @@ export const PROVIDERS = {
     needsKey: false,
     defaultModel: "gemini-nano",
     maxChars: 6000, // small context window
+    charts: false, // too small to write chart data reliably
     run: runChrome,
   },
   anthropic: {
@@ -17,6 +19,7 @@ export const PROVIDERS = {
     needsKey: true,
     defaultModel: "claude-opus-5-5",
     maxChars: 60000,
+    charts: true,
     run: runAnthropic,
   },
   openai: {
@@ -25,6 +28,7 @@ export const PROVIDERS = {
     needsKey: true,
     defaultModel: "gpt-5-mini",
     maxChars: 60000,
+    charts: true,
     run: runOpenAI,
   },
   gemini: {
@@ -33,6 +37,7 @@ export const PROVIDERS = {
     needsKey: true,
     defaultModel: "gemini-2.5-flash",
     maxChars: 60000,
+    charts: true,
     run: runGemini,
   },
 };
@@ -58,7 +63,7 @@ export async function chromeModelState() {
   return full === "available" ? full : outOnly === "available" ? outOnly : full;
 }
 
-async function runChrome(system, user, _s, onStatus) {
+async function runChrome(system, messages, _s, onStatus) {
   onStatus?.("Checking Chrome's built-in model…");
   const state = await chromeModelState();
   if (state === "missing") {
@@ -75,7 +80,7 @@ async function runChrome(system, user, _s, onStatus) {
   onStatus?.(state === "available" ? "Starting Chrome's model…" : downloading(null));
   const session = await LanguageModel.create({
     ...chromeOptions,
-    initialPrompts: [{ role: "system", content: system }],
+    initialPrompts: [{ role: "system", content: system }, ...messages.slice(0, -1)],
     monitor(m) {
       m.addEventListener("downloadprogress", (e) => {
         const done = e.loaded / (e.total || 1);
@@ -83,15 +88,15 @@ async function runChrome(system, user, _s, onStatus) {
       });
     },
   });
-  onStatus?.("Reading the page…");
+  onStatus?.(messages.length > 1 ? "Thinking…" : "Reading the page…");
   try {
-    return await session.prompt(user);
+    return await session.prompt(messages.at(-1).content);
   } finally {
     session.destroy();
   }
 }
 
-async function runAnthropic(system, user, s) {
+async function runAnthropic(system, messages, s) {
   const res = await fetch("https://api.anthropic.com/v1/messages", {
     method: "POST",
     headers: {
@@ -106,7 +111,7 @@ async function runAnthropic(system, user, s) {
       max_tokens: 16000,
       fallbacks: "default",
       system,
-      messages: [{ role: "user", content: user }],
+      messages,
     }),
   });
   const data = await res.json();
@@ -115,16 +120,13 @@ async function runAnthropic(system, user, s) {
   return data.content.filter((b) => b.type === "text").map((b) => b.text).join("");
 }
 
-async function runOpenAI(system, user, s) {
+async function runOpenAI(system, messages, s) {
   const res = await fetch("https://api.openai.com/v1/chat/completions", {
     method: "POST",
     headers: { "content-type": "application/json", authorization: `Bearer ${s.key}` },
     body: JSON.stringify({
       model: s.model,
-      messages: [
-        { role: "system", content: system },
-        { role: "user", content: user },
-      ],
+      messages: [{ role: "system", content: system }, ...messages],
     }),
   });
   const data = await res.json();
@@ -132,14 +134,14 @@ async function runOpenAI(system, user, s) {
   return data.choices[0].message.content;
 }
 
-async function runGemini(system, user, s) {
+async function runGemini(system, messages, s) {
   const url = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(s.model)}:generateContent`;
   const res = await fetch(url, {
     method: "POST",
     headers: { "content-type": "application/json", "x-goog-api-key": s.key },
     body: JSON.stringify({
       systemInstruction: { parts: [{ text: system }] },
-      contents: [{ role: "user", parts: [{ text: user }] }],
+      contents: messages.map((m) => ({ role: m.role === "assistant" ? "model" : "user", parts: [{ text: m.content }] })),
     }),
   });
   const data = await res.json();

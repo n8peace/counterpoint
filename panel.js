@@ -1,18 +1,25 @@
 import { PROVIDERS, chromeModelState, chromeDetail } from "./providers.js";
-import { SYSTEM, userMessage } from "./prompt.js";
+import { systemPrompt, userMessage } from "./prompt.js";
 
 const $ = (id) => document.getElementById(id);
 const out = $("out");
 const MIN_CHROME = 138;
-let current = null;
+
+let job = null; // the page or selection being countered
+let convo = null; // { key, provider, model, messages: [{role, content}] }
+let busy = false;
 let runId = 0; // each run gets a number; only the newest one may draw
 let chromeReport = ""; // e.g. "Chrome 152 · model: downloading"
 
-// The mark: the page's line and the other side's line, moving in contrary motion.
-const mark = (cls = "") =>
-  `<svg class="mark ${cls}" viewBox="0 0 40 16" aria-hidden="true"><path class="p" d="M2 14 C 14 14, 26 2, 38 2"/><path class="c" d="M2 2 C 14 2, 26 14, 38 14"/></svg>`;
+const ICONS = {
+  mark: `<svg viewBox="0 0 40 16" aria-hidden="true"><path d="M2 14 C 14 14, 26 2, 38 2" opacity=".45"/><path d="M2 2 C 14 2, 26 14, 38 14"/></svg>`,
+  copy: `<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="8" y="8" width="12" height="12" rx="2"/><path d="M16 8V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h2"/></svg>`,
+  refresh: `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 12a8 8 0 1 1-2.34-5.66"/><path d="M20 4v5h-5"/></svg>`,
+  search: `<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="6"/><path d="M20 20l-4.5-4.5"/></svg>`,
+};
 
-// ---- settings ----
+// ---------- settings ----------
+
 for (const [id, p] of Object.entries(PROVIDERS)) {
   $("providers").insertAdjacentHTML(
     "beforeend",
@@ -56,116 +63,184 @@ $("save").addEventListener("click", async () => {
   s.models[id] = $("model").value.trim() || PROVIDERS[id].defaultModel;
   await chrome.storage.local.set({ settings: s });
   openSettings(false);
-  if (current) run(current);
+  if (job) run(job, { fresh: true });
 });
 
-// ---- jobs ----
-chrome.storage.session.get("job").then(({ job }) => (job ? run(job) : welcome()));
+// ---------- jobs ----------
+
+chrome.storage.session.get("job").then(({ job: j }) => (j ? run(j) : welcome()));
 chrome.storage.onChanged.addListener((changes, area) => {
   if (area === "session" && changes.job?.newValue) run(changes.job.newValue);
 });
-$("again").addEventListener("click", () => current && run(current));
 
 function welcome() {
   const mac = /Mac/.test(navigator.platform);
   out.innerHTML = `<div class="state">
-    ${mark()}
-    <h2>Every page is arguing something.</h2>
-    <p>Counterpoint finds what it's pushing and makes the best case for the other side.</p>
+    <div class="logo">${ICONS.mark}</div>
+    <h2>See the other side of any page</h2>
+    <p>Counterpoint finds what a page wants you to believe or buy, then makes the strongest honest case against it.</p>
     <ul class="ways">
-      <li><b>Click the Counterpoint button</b> on any page</li>
-      <li>or press ${mac ? "<kbd>⌥</kbd> <kbd>⇧</kbd> <kbd>C</kbd>" : "<kbd>Alt</kbd> <kbd>Shift</kbd> <kbd>C</kbd>"}</li>
-      <li>or highlight text, right-click, and choose <b>Counterpoint this</b></li>
+      <li><b>Click the Counterpoint button</b> in the toolbar on any page</li>
+      <li><b>Press ${mac ? "<kbd>⌥</kbd> <kbd>⇧</kbd> <kbd>C</kbd>" : "<kbd>Alt</kbd> <kbd>Shift</kbd> <kbd>C</kbd>"}</b> to do the same from the keyboard</li>
+      <li><b>Highlight text</b>, right-click, and choose Counterpoint this</li>
     </ul>
   </div>`;
 }
 
-async function run(job) {
-  current = job;
+const keyFor = (j) => `${j.kind}|${j.url}|${j.kind === "selection" ? j.text.slice(0, 200) : ""}`;
+
+async function saved(key) {
+  const { results = {} } = await chrome.storage.session.get("results");
+  return results[key];
+}
+
+async function save(c) {
+  const { results = {} } = await chrome.storage.session.get("results");
+  results[c.key] = c;
+  const keys = Object.keys(results);
+  for (const k of keys.slice(0, Math.max(0, keys.length - 30))) delete results[k]; // keep the last 30
+  await chrome.storage.session.set({ results });
+}
+
+// Start (or restore) the counterpoint for a page.
+async function run(j, { fresh = false } = {}) {
+  job = j;
   const me = ++runId;
   const live = () => me === runId;
-  $("host").textContent = job.kind === "selection" ? `Selection on ${host(job.url)}` : host(job.url);
-  $("pageTitle").textContent = job.title || "";
-  $("foot").hidden = false;
+  busy = false;
+  $("host").textContent = j.kind === "selection" ? `Selection on ${host(j.url)}` : host(j.url);
+  $("pageTitle").textContent = j.title || "";
+  $("composer").hidden = true;
   $("via").textContent = "";
 
-  if (job.kind === "error") return state({ title: "Can't read this page", body: job.error, error: true });
-  if (!job.text || job.text.trim().length < 40) {
-    return state({ title: "Not much to argue with here", body: "This page has too little text to find a stance. Try an article, a product page, or highlight a passage." });
+  if (j.kind === "error") return state({ title: "Can't read this page", body: j.error, error: true });
+  if (!j.text || j.text.trim().length < 40) {
+    return state({ title: "Not much to argue with here", body: "This page has too little text to find a stance. Try an article or a product page, or highlight a passage." });
   }
 
   const s = await loadSettings();
   if (!live()) return;
   const p = PROVIDERS[s.provider];
-  const key = s.keys[s.provider];
   const model = s.models[s.provider] || p.defaultModel;
-  if (p.needsKey && !key) {
+  const key = keyFor(j);
+
+  const prior = !fresh && (await saved(key));
+  if (!live()) return;
+  if (prior) {
+    convo = prior;
+    return show();
+  }
+
+  if (p.needsKey && !s.keys[s.provider]) {
     openSettings(true);
     return state({ title: `Add your ${p.label} key`, body: "Paste it in settings above, or pick Chrome built-in AI to run free on your computer." });
   }
-  if (s.provider === "chrome" && !(await chromePreflight(job, live))) return;
+  if (s.provider === "chrome" && !(await chromePreflight(live))) return;
 
-  // view: { title?, body, progress? (undefined = none, null = unknown, 0..1) }
-  let view = { body: "Finding the other side…" };
+  convo = { key, provider: s.provider, model, messages: [{ role: "user", content: userMessage(j, p.maxChars) }] };
+  await think(live, s);
+}
+
+// Ask a follow-up about the current page.
+$("ask").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const q = $("question").value.trim();
+  if (!q || busy || !convo) return;
+  const s = await loadSettings();
+  $("question").value = "";
+  convo.messages.push({ role: "user", content: q });
+  const me = ++runId;
+  await think(() => me === runId, s);
+});
+$("question").addEventListener("input", syncSend);
+
+function syncSend() {
+  $("send").disabled = busy || !$("question").value.trim();
+}
+
+// Send the conversation to the model and draw the result.
+async function think(live, s) {
+  const c = convo;
+  const p = PROVIDERS[c.provider];
+  const first = c.messages.length === 1;
+  busy = true;
+  syncSend();
+
+  let view = { body: first ? "Reading the page…" : "" };
   const started = Date.now();
   const tick = () => {
     const secs = Math.round((Date.now() - started) / 1000);
-    const downloading = view.progress !== undefined;
-    state({
-      ...view,
-      moving: !downloading,
-      meta: downloading ? elapsed(secs) : secs >= 3 ? `${secs}s` : "",
-      actions: downloading ? [{ label: "See Chrome's download status", onClick: openComponents }] : [],
-      hint: downloading
-        ? "You can close this panel. Chrome keeps downloading, and you can click Counterpoint again later."
-        : s.provider === "chrome" && secs >= 45
-        ? "Taking long? Relaunch Chrome, or add an API key in settings for a faster answer."
-        : "",
-    });
+    if (view.progress !== undefined) {
+      return state({
+        ...view,
+        meta: elapsed(secs),
+        hint: "You can close this panel. Chrome keeps downloading, and you can click Counterpoint again later.",
+        actions: [{ label: "See Chrome's download status", onClick: openComponents }],
+      });
+    }
+    if (first) {
+      const slow = c.provider === "chrome" && secs >= 45 ? " Taking long? Relaunch Chrome, or add an API key in settings." : "";
+      skeleton(`${view.body}${secs >= 3 ? ` ${secs}s` : ""}${slow}`);
+    } else show({ pending: true });
   };
   tick();
   const timer = setInterval(() => (live() ? tick() : clearInterval(timer)), 1000);
+
   try {
     const text = await withTimeout(
-      p.run(SYSTEM, userMessage(job, p.maxChars), { key, model }, (update) => {
+      p.run(systemPrompt({ charts: p.charts }), c.messages, { key: s.keys[c.provider], model: c.model }, (update) => {
+        if (!live()) return;
         view = typeof update === "string" ? { body: update } : update;
-        if (live()) badge(view.progress !== undefined ? "↓" : "");
-        if (live()) tick();
+        badge(view.progress !== undefined ? "↓" : "");
+        tick();
       }),
-      s.provider === "chrome" ? 1_800_000 : 180_000
+      c.provider === "chrome" ? 1_800_000 : 180_000
     );
     if (!live()) return;
-    out.innerHTML = renderResult(text);
-    $("via").textContent = s.provider === "chrome" ? "Chrome built-in AI · on this computer" : `${p.label} · ${model}`;
+    c.messages.push({ role: "assistant", content: text });
+    busy = false;
+    await save(c);
+    show();
   } catch (e) {
-    if (live()) state({ title: "That didn't work", body: e.message, error: true, actions: [{ label: "Try again", primary: true, onClick: () => run(job) }] });
+    if (!live()) return;
+    busy = false;
+    if (first) {
+      state({ title: "That didn't work", body: e.message, error: true, actions: [{ label: "Try again", primary: true, onClick: () => run(job, { fresh: true }) }] });
+    } else {
+      $("question").value = c.messages.pop().content; // give the question back
+      show();
+      toast(e.message);
+    }
   } finally {
     clearInterval(timer);
     if (live()) badge("");
+    syncSend();
   }
 }
 
+// ---------- Chrome's built-in model ----------
+
 // Explain Chrome's built-in AI state before trying it. Returns true when it can run.
-async function chromePreflight(job, live) {
+async function chromePreflight(live) {
   const st = await chromeModelState();
   if (!live()) return false;
   const version = Number(navigator.userAgent.match(/Chrome\/(\d+)/)?.[1] || 0);
   chromeReport = `Chrome ${version || "?"} · model: ${chromeDetail}`;
   const useKey = { label: "Use an API key instead", onClick: () => openSettings(true) };
-  const again = { label: "Check again", onClick: () => run(job) };
+  const again = { label: "Check again", onClick: () => run(job, { fresh: true }) };
 
   if (st === "missing") {
     const tooOld = !version || version < MIN_CHROME;
     state(
       tooOld
         ? {
-            title: "Chrome update required", details: chromeReport,
+            title: "Chrome update required",
             body: `Free mode uses Chrome's built-in AI, which needs Chrome ${MIN_CHROME} or newer.${version ? ` You have Chrome ${version}.` : ""}`,
             hint: "To update, open the Chrome menu (⋮), choose Help, then About Google Chrome, and click Relaunch.",
             actions: [{ ...again, primary: true }, useKey],
           }
         : {
-            title: "Chrome's built-in AI is turned off", details: chromeReport,
+            title: "Chrome's built-in AI is turned off",
             body: `Chrome ${version} supports it, but it isn't on here. If Chrome shows "Relaunch to update", relaunch first.`,
             hint: "On a work or school computer, your organization may have turned it off.",
             actions: [again, { ...useKey, primary: true }],
@@ -175,7 +250,7 @@ async function chromePreflight(job, live) {
   }
   if (st === "unavailable") {
     state({
-      title: "This computer can't run Chrome's AI", details: chromeReport,
+      title: "This computer can't run Chrome's AI",
       body: "Chrome's model needs about 22 GB of free disk space, plus either a graphics chip with more than 4 GB of memory or 16 GB of RAM.",
       hint: "Free up disk space and check again, or use your own API key.",
       actions: [again, { ...useKey, primary: true }],
@@ -185,56 +260,97 @@ async function chromePreflight(job, live) {
   // Chrome only starts the download from a click inside this panel.
   if (st === "downloadable" && !navigator.userActivation.isActive) {
     state({
-      title: "One-time setup", details: chromeReport,
+      title: "One-time setup",
       body: "Free mode runs on Chrome's built-in AI. Chrome downloads the model once (a few GB). After that it runs on your computer, offline, at no cost.",
-      actions: [{ label: "Download model and run", primary: true, onClick: () => run(job) }, useKey],
+      actions: [{ label: "Download model and run", primary: true, onClick: () => run(job, { fresh: true }) }, useKey],
     });
     return false;
   }
   return true;
 }
 
-function state({ title, body, progress, meta, hint, moving, error, actions = [], details }) {
+function openComponents() {
+  chrome.tabs?.create?.({ url: "chrome://components" });
+}
+
+// ---------- drawing ----------
+
+function show({ pending = false } = {}) {
+  const [, first, ...rest] = convo.messages;
+  let html = renderAnswer(first.content);
+  for (let i = 0; i < rest.length; i += 2) {
+    const q = rest[i], a = rest[i + 1];
+    html += `<div class="turn"><div class="q">${esc(q.content)}</div>${
+      a ? `<div class="a">${renderPlain(a.content)}</div>` : pending ? `<div class="a"><span class="typing"><i></i><i></i><i></i></span></div>` : ""
+    }</div>`;
+  }
+  out.innerHTML = html;
+  out.querySelector("[data-copy]")?.addEventListener("click", () => copy(first.content));
+  out.querySelector("[data-again]")?.addEventListener("click", () => run(job, { fresh: true }));
+  const p = PROVIDERS[convo.provider];
+  $("via").textContent = convo.provider === "chrome" ? "Chrome built-in AI · on this computer" : `${p.label} · ${convo.model}`;
+  $("composer").hidden = false;
+  syncSend();
+  if (rest.length) out.lastElementChild?.scrollIntoView({ block: "end", behavior: "smooth" });
+}
+
+function skeleton(status) {
+  out.innerHTML = `<div class="skeleton" aria-label="Loading">
+    <div class="card says"><div class="line w40"></div><div class="line w90"></div><div class="line w60"></div></div>
+    <div class="card counter"><div class="line w40"></div><div class="line w90"></div><div class="line w80"></div></div>
+    <div class="line w90" style="margin-top:14px"></div><div class="line w80"></div><div class="line w90"></div><div class="line w60"></div>
+  </div>${status ? `<p class="status">${esc(status)}</p>` : ""}`;
+}
+
+function state({ title, body, progress, meta, hint, error, actions = [] }) {
   const loading = progress !== undefined;
   const pct = typeof progress === "number" ? Math.round(progress * 100) : null;
+  const chromeScreen = loading || actions.some((a) => a.label === "Use an API key instead" || a.label === "Download model and run");
   out.innerHTML = `<div class="state${error ? " error" : ""}">
-    ${error ? "" : mark(moving || loading ? "moving" : "")}
+    ${error ? "" : `<div class="logo">${ICONS.mark}</div>`}
     ${title ? `<h2>${esc(title)}</h2>` : ""}
-    <p class="${title ? "" : "lead"}">${esc(body)}${meta && !loading ? ` <span class="meta">${esc(meta)}</span>` : ""}</p>
+    <p>${esc(body)}</p>
     ${loading
       ? `<div class="progress${pct === null ? " unknown" : ""}"><span${pct === null ? "" : ` style="width:${pct}%"`}></span></div>
          <p class="pct">${pct === null ? "" : `${pct}% · `}${esc(meta || "")}${pct === null ? " · Chrome doesn't report a percent" : ""}</p>`
       : ""}
     ${hint ? `<p>${esc(hint)}</p>` : ""}
     <div class="actions"></div>
-    ${details || (loading && chromeReport) ? `<p class="fine diag">${esc(details || chromeReport)}</p>` : ""}
     ${loading && pct === null ? `<p class="fine">On that page, find <b>Optimization Guide On Device Model</b>. Any version other than 0.0.0.0 means the download is done.</p>` : ""}
+    ${chromeScreen && chromeReport ? `<p class="diag">${esc(chromeReport)}</p>` : ""}
   </div>`;
   const row = out.querySelector(".actions");
   for (const a of actions) {
     const b = document.createElement("button");
     b.textContent = a.label;
-    if (a.primary) b.className = "primary";
+    b.className = a.primary ? "filled-btn" : "outline-btn";
     b.addEventListener("click", a.onClick);
     row.append(b);
   }
 }
 
-// ---- rendering the answer ----
+// ---------- the answer ----------
 
 const HEADS = [
   ["says", /^the page says\b/i],
   ["counter", /^the counterpoint\b/i],
   ["args", /^strongest arguments\b/i],
   ["settle", /^what would settle it\b/i],
+  ["search", /^search the other side\b/i],
 ];
 
-// Split the model's answer into its four parts. Small models drift, so match loosely.
+// Pull out ```chart blocks, then split the rest into its parts. Small models drift, so match loosely.
 function parse(md) {
-  const parts = { says: [], counter: [], args: [], settle: [] };
+  const charts = [];
+  const text = md.replace(/```chart\s*([\s\S]*?)```/gi, (_, json) => {
+    const c = readChart(json);
+    if (c) charts.push(c);
+    return "";
+  });
+  const parts = { says: [], counter: [], args: [], settle: [], search: [], charts };
   let cur = null;
-  for (const raw of md.split("\n")) {
-    let t = raw.trim().replace(/^#+\s*/, "");
+  for (const raw of text.split("\n")) {
+    const t = raw.trim().replace(/^#+\s*/, "");
     if (!t) continue;
     const bare = t.replace(/\*\*/g, "").trim();
     const head = HEADS.find(([, re]) => re.test(bare));
@@ -244,34 +360,86 @@ function parse(md) {
       if (rest) parts[cur].push(rest);
       continue;
     }
-    if (!cur) continue;
-    parts[cur].push(t.replace(/^([-*•]|\d+[.)])\s+/, ""));
+    if (cur) parts[cur].push(t.replace(/^([-*•]|\d+[.)])\s+/, ""));
   }
   return parts.says.length && parts.counter.length ? parts : null;
 }
 
-function renderResult(md) {
+function renderAnswer(md) {
   const p = parse(md);
-  if (!p) return `<div class="result plain">${renderPlain(md)}</div>`;
-  const list = (items, cls) => `<ul class="${cls}">${items.map((i) => `<li>${inline(i)}</li>`).join("")}</ul>`;
-  return `<article class="result">
-    <section class="says"><p class="label">The page says</p><blockquote>${inline(p.says.join(" "))}</blockquote></section>
-    ${mark("divider")}
-    <section class="counter"><p class="label">The other side</p><h2 class="thesis">${inline(p.counter.join(" "))}</h2></section>
-    ${p.args.length ? `<section><h3 class="section-head">Strongest arguments</h3>${list(p.args, "args")}</section>` : ""}
-    ${p.settle.length ? `<section><h3 class="section-head">What would settle it</h3>${list(p.settle, "settle")}</section>` : ""}
+  const actions = `<div class="answer-actions">
+    <button class="icon-btn" data-copy aria-label="Copy" title="Copy">${ICONS.copy}</button>
+    <button class="icon-btn" data-again aria-label="Run again" title="Run again">${ICONS.refresh}</button>
+  </div>`;
+  if (!p) return `<div class="answer plain">${renderPlain(md)}${actions}</div>`;
+  const list = (items, cls) => `<ul class="points ${cls}">${items.map((i) => `<li>${inline(i)}</li>`).join("")}</ul>`;
+  const queries = p.search.map((q) => q.replace(/^["“]|["”]$/g, "")).filter(Boolean).slice(0, 3);
+  return `<article class="answer">
+    <section class="card says"><p class="label">The page says</p><p class="claim">${inline(p.says.join(" "))}</p></section>
+    <section class="card counter"><p class="label">The other side</p><h2 class="thesis">${inline(p.counter.join(" "))}</h2></section>
+    ${p.args.length ? `<section class="section"><h3 class="section-head">Strongest arguments</h3>${list(p.args, "args")}</section>` : ""}
+    ${p.charts.map(renderChart).join("")}
+    ${p.settle.length ? `<section class="section"><h3 class="section-head">What would settle it</h3>${list(p.settle, "settle")}</section>` : ""}
+    ${queries.length ? `<section class="section"><h3 class="section-head">Search the other side</h3><div class="chips">${queries
+      .map((q) => `<a class="chip" href="https://www.google.com/search?q=${encodeURIComponent(q)}" target="_blank" rel="noopener">${ICONS.search}<span>${esc(q)}</span></a>`)
+      .join("")}</div></section>` : ""}
+    ${actions}
   </article>`;
 }
 
-// Fallback for answers that don't follow the format (e.g. "this page takes no stance").
+// Charts arrive as data. Validate everything; draw nothing we don't understand.
+function readChart(json) {
+  let c;
+  try { c = JSON.parse(json); } catch { return null; }
+  const str = (v, n = 80) => (typeof v === "string" ? v.slice(0, n) : "");
+  if (c?.type === "bar" && Array.isArray(c.items)) {
+    const items = c.items
+      .filter((i) => typeof i?.value === "number" && isFinite(i.value) && i.value >= 0)
+      .slice(0, 6)
+      .map((i) => ({ label: str(i.label, 60), value: i.value }));
+    if (items.length < 2) return null;
+    return { type: "bar", title: str(c.title), unit: str(c.unit, 8), note: str(c.note, 160), items };
+  }
+  if (c?.type === "compare" && Array.isArray(c.columns) && Array.isArray(c.rows)) {
+    const columns = c.columns.slice(0, 3).map((x) => str(x, 30));
+    const rows = c.rows
+      .filter((r) => Array.isArray(r?.values))
+      .slice(0, 6)
+      .map((r) => ({ label: str(r.label, 40), values: columns.map((_, i) => str(r.values[i], 60)) }));
+    if (columns.length < 2 || !rows.length) return null;
+    return { type: "compare", title: str(c.title), note: str(c.note, 160), columns, rows };
+  }
+  return null;
+}
+
+function renderChart(c) {
+  const head = c.title ? `<h4>${esc(c.title)}</h4>` : "";
+  const note = c.note ? `<p class="note">${esc(c.note)}</p>` : "";
+  if (c.type === "bar") {
+    const max = Math.max(...c.items.map((i) => i.value)) || 1;
+    const fmt = (v) => {
+      const n = v.toLocaleString(undefined, { maximumFractionDigits: 2 });
+      return /^[$€£¥]$/.test(c.unit) ? c.unit + n : c.unit ? `${n} ${c.unit}` : n;
+    };
+    return `<figure class="chart">${head}<div class="bars">${c.items
+      .map((i) => `<div class="bar-row"><div class="bar-top"><span>${esc(i.label)}</span><b>${esc(fmt(i.value))}</b></div><div class="bar-track"><div class="bar-fill" style="width:${Math.max(2, (i.value / max) * 100)}%"></div></div></div>`)
+      .join("")}</div>${note}</figure>`;
+  }
+  return `<figure class="chart">${head}<table class="compare"><thead><tr><th></th>${c.columns.map((x) => `<th scope="col">${esc(x)}</th>`).join("")}</tr></thead><tbody>${c.rows
+    .map((r) => `<tr><th scope="row">${esc(r.label)}</th>${r.values.map((v) => `<td>${esc(v)}</td>`).join("")}</tr>`)
+    .join("")}</tbody></table>${note}</figure>`;
+}
+
+// For follow-ups and answers that don't follow the format.
 function renderPlain(md) {
+  md = md.replace(/```chart[\s\S]*?```/gi, "");
   let html = "", list = false;
   for (const line of md.split("\n")) {
     const t = line.trim();
-    const bullet = t.match(/^[-*•]\s+(.*)/);
+    const bullet = t.match(/^([-*•]|\d+[.)])\s+(.*)/);
     if (bullet) {
       if (!list) { html += "<ul>"; list = true; }
-      html += `<li>${inline(bullet[1])}</li>`;
+      html += `<li>${inline(bullet[2])}</li>`;
       continue;
     }
     if (list) { html += "</ul>"; list = false; }
@@ -283,6 +451,27 @@ function renderPlain(md) {
 // Escape first, always; then allow **bold**.
 function inline(s) {
   return esc(s).replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>");
+}
+
+// ---------- small helpers ----------
+
+async function copy(md) {
+  const text = md.replace(/```chart[\s\S]*?```/gi, "").replace(/\*\*/g, "").replace(/\n{3,}/g, "\n\n").trim();
+  try {
+    await navigator.clipboard.writeText(`${text}\n\n(Counterpoint on ${job?.url || "this page"})`);
+    toast("Copied");
+  } catch {
+    toast("Couldn't copy. Select the text instead.");
+  }
+}
+
+let toastTimer;
+function toast(msg) {
+  const t = $("toast");
+  t.textContent = msg;
+  t.hidden = false;
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => (t.hidden = true), 2400);
 }
 
 function esc(s) {
@@ -297,13 +486,8 @@ function elapsed(secs) {
   return secs < 60 ? `${secs}s so far` : `${Math.floor(secs / 60)} min so far`;
 }
 
-// Chrome's own page for its built-in model download. Look for "Optimization Guide On Device Model".
-function openComponents() {
-  chrome.tabs?.create?.({ url: "chrome://components" });
-}
-
 function badge(text) {
-  chrome.action?.setBadgeBackgroundColor?.({ color: "#2e46d9" });
+  chrome.action?.setBadgeBackgroundColor?.({ color: "#0b57d0" });
   chrome.action?.setBadgeText?.({ text });
 }
 
