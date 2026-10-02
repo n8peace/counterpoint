@@ -3,7 +3,8 @@
 // session storage.
 import { readTab } from "./extract.js";
 
-chrome.runtime.onInstalled.addListener(() => {
+chrome.runtime.onInstalled.addListener(({ reason }) => {
+  if (reason === "install") chrome.tabs.create({ url: "welcome.html" });
   chrome.contextMenus.create({
     id: "counterpoint-selection",
     title: "Counterpoint this",
@@ -20,6 +21,9 @@ chrome.contextMenus.onClicked.addListener((info, tab) => {
   chrome.sidePanel.open({ windowId: tab.windowId });
   queueJob({ kind: "selection", url: tab.url, title: tab.title, text: info.selectionText, tabId: tab.id, id: Date.now() });
 });
+
+// Ask what didn't work, so we can fix it.
+chrome.runtime.setUninstallURL("https://github.com/n8peace/counterpoint/issues/new?title=Why%20I%20uninstalled%20Counterpoint");
 
 function queueJob(job) {
   chrome.storage.session.set({ job });

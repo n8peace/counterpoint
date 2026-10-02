@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Welcome to Counterpoint</title>
+  <link rel="stylesheet" href="panel.css">
+  <style>
+    html, body { height: auto; }
+    body { display: block; background: var(--container); }
+    .wrap { max-width: 640px; margin: 0 auto; padding: 56px 20px 64px; }
+    .sheet { background: var(--surface); border-radius: 28px; padding: 40px 36px; }
+    .logo { width: 56px; height: 56px; border-radius: 16px; background: var(--primary-container); color: var(--primary); display: grid; place-items: center; }
+    .logo svg { width: 34px; height: 16px; stroke-width: 2.6; }
+    h1 { margin: 20px 0 8px; font: 400 32px/1.25 var(--font-display); }
+    .lead { margin: 0 0 28px; font-size: 16px; color: var(--on-variant); }
+    ol { list-style: none; margin: 0; padding: 0; display: grid; gap: 12px; counter-reset: step; }
+    li { counter-increment: step; display: grid; grid-template-columns: 32px 1fr; gap: 14px; padding: 16px; border-radius: 16px; background: var(--container); }
+    li::before { content: counter(step); width: 32px; height: 32px; border-radius: 50%; background: var(--primary); color: var(--on-primary); display: grid; place-items: center; font: 500 14px var(--font-display); }
+    li b { display: block; font-weight: 500; margin-bottom: 2px; }
+    li span { color: var(--on-variant); font-size: 13.5px; }
+    .foot { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 28px; }
+    .foot a { text-decoration: none; }
+    @media (max-width: 520px) { .sheet { padding: 28px 20px; border-radius: 20px; } h1 { font-size: 26px; } }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <main class="sheet">
+      <div class="logo"><svg viewBox="0 0 40 16" aria-hidden="true"><path d="M2 14 C 14 14, 26 2, 38 2" opacity=".45"/><path d="M2 2 C 14 2, 26 14, 38 14"/></svg></div>
+      <h1>Counterpoint is installed</h1>
+      <p class="lead">Every page is trying to convince you of something. Here's how to see the other side.</p>
+      <ol>
+        <li><div><b>Pin it</b><span>Click the puzzle-piece icon at the top right of Chrome, then the pin next to Counterpoint.</span></div></li>
+        <li><div><b>Click it on any page</b><span>Or press <kbd>Alt</kbd> <kbd>Shift</kbd> <kbd>C</kbd> (<kbd>⌥</kbd> <kbd>⇧</kbd> <kbd>C</kbd> on a Mac). You can also highlight text, right-click, and choose Counterpoint this.</span></div></li>
+        <li><div><b>Pick a model</b><span>It starts with Chrome's built-in AI: free, private, and on your computer. Chrome downloads it once (a few GB, needs 22 GB free). Or use your own Claude, OpenAI, or Gemini key from the settings button in the panel.</span></div></li>
+      </ol>
+      <div class="foot">
+        <a class="tonal-btn" href="https://github.com/n8peace/counterpoint" target="_blank" rel="noopener">Star it on GitHub</a>
+        <a class="text-btn" href="https://github.com/n8peace/counterpoint/blob/master/PRIVACY.md" target="_blank" rel="noopener">Privacy</a>
+      </div>
+    </main>
+  </div>
+</body>
+</html>

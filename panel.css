@@ -116,6 +116,13 @@ main { flex: 1; overflow-y: auto; padding: 4px 12px 20px; }
 .points li + li { border-top: 1px solid var(--outline-variant); }
 .answer strong { font-weight: 600; }
 
+/* rating ask */
+.rate { margin-top: 18px; background: var(--container); }
+.rate p { margin: 0; font-size: 13px; color: var(--on-variant); }
+.rate b { color: var(--on-surface); font-weight: 500; }
+.rate .actions { margin-top: 10px; gap: 4px; }
+.rate a.text-btn { text-decoration: none; font-size: 14px; font-weight: 500; }
+
 /* say more */
 .more-btn { margin-top: 14px; }
 .more-btn svg { width: 18px; height: 18px; }

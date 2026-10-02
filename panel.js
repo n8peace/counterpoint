@@ -298,6 +298,7 @@ async function think(live, s, effort) {
     );
     if (!live()) return;
     c.messages.push({ role: "assistant", content: text });
+    if (first) await countAnswer();
     busy = false;
     await save(c);
     show();
@@ -388,6 +389,7 @@ function show({ pending = false } = {}) {
   out.innerHTML = html;
   out.querySelector("[data-copy]")?.addEventListener("click", () => copy(main.content));
   out.querySelector("[data-more]")?.addEventListener("click", sayMore);
+  if (!pending) maybeAskForRating();
   out.querySelector("[data-again]")?.addEventListener("click", runAgain);
   const p = PROVIDERS[convo.provider];
   $("via").textContent = convo.provider === "chrome" ? "Chrome built-in AI · on this computer" : `${p.label} · ${convo.model}`;
@@ -567,6 +569,40 @@ function renderPlain(md) {
 // Escape first, always; then allow **bold**.
 function inline(s) {
   return esc(s).replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>");
+}
+
+// ---------- asking for a rating ----------
+// After the 5th answer, ask once. "Not now" waits 20 more answers, then we never ask again.
+
+const STORE_REVIEWS = `https://chromewebstore.google.com/detail/${chrome.runtime?.id}/reviews`;
+const FEEDBACK = "https://github.com/n8peace/counterpoint/issues/new";
+
+async function countAnswer() {
+  const { stats = {} } = await chrome.storage.local.get("stats");
+  stats.answers = (stats.answers || 0) + 1;
+  await chrome.storage.local.set({ stats });
+}
+
+async function maybeAskForRating() {
+  const { stats = {} } = await chrome.storage.local.get("stats");
+  const n = stats.answers || 0;
+  if (stats.rated || n < 5 || n < (stats.askAfter || 0) || stats.declined >= 2) return;
+  if (out.querySelector(".rate") || !out.querySelector(".answer")) return;
+  out.querySelector(".answer").insertAdjacentHTML(
+    "beforeend",
+    `<aside class="rate card"><p><b>Is Counterpoint useful?</b> A quick rating helps other people find it.</p>
+      <div class="actions"><button class="filled-btn" data-rate>Rate it</button><a class="text-btn" data-feedback href="${FEEDBACK}" target="_blank" rel="noopener">Send feedback</a><button class="text-btn" data-later>Not now</button></div></aside>`
+  );
+  const done = async (patch) => {
+    await chrome.storage.local.set({ stats: { ...stats, ...patch } });
+    out.querySelector(".rate")?.remove();
+  };
+  out.querySelector("[data-rate]").addEventListener("click", () => {
+    window.open(STORE_REVIEWS, "_blank");
+    done({ rated: true });
+  });
+  out.querySelector("[data-feedback]").addEventListener("click", () => done({ rated: true }));
+  out.querySelector("[data-later]").addEventListener("click", () => done({ declined: (stats.declined || 0) + 1, askAfter: n + 20 }));
 }
 
 // ---------- small helpers ----------
