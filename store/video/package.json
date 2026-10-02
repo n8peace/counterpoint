@@ -5,7 +5,8 @@
   "scripts": {
     "dev": "npx --yes hyperframes@0.8.108 preview",
     "check": "npx --yes hyperframes@0.8.108 check",
-    "render": "npx --yes hyperframes@0.8.108 render",
-    "publish": "npx --yes hyperframes@0.8.108 publish"
+    "render": "npx --yes hyperframes@0.8.108 render -o ../assets/promo-video.mp4",
+    "publish": "npx --yes hyperframes@0.8.108 publish",
+    "render:square": "npx --yes hyperframes@0.8.108 render -c compositions/square.html -o ../assets/promo-video-square.mp4"
   }
 }

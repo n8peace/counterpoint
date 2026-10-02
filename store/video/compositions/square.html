@@ -2,8 +2,8 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=1920, height=1080" />
-    <title>Counterpoint promo (wide)</title>
+    <meta name="viewport" content="width=1080, height=1080" />
+    <title>Counterpoint promo (square)</title>
     <script src="https://cdn.jsdelivr.net/npm/gsap@3.14.2/dist/gsap.min.js"></script>
     <link rel="stylesheet" href="assets/promo.css" />
     <style>
@@ -13,14 +13,14 @@
         font-weight: 400 700;
         font-style: normal;
       }
-      html, body { width: 1920px; height: 1080px; }
+      html, body { width: 1080px; height: 1080px; }
       body { font-family: "Google Sans", sans-serif; }
       .article h2, .article p { font-family: "EB Garamond", serif; }
-      #root { --capX: 148px; --capY: 40px; --capW: 1624px; --capH: 120px; --h1: 56px; --sub: 24px; --subGap: 10px; --winX: 148px; --winY: 168px; --scale: 1.45; --winH: 629px; --tile: 136px; --eName: 104px; --eTag: 42px; --eInfo: 30px; --eUrl: 30px; --eUrlH: 68px; --eUrlPad: 32px; --eGap1: 40px; --eGap2: 22px; --eGap3: 30px; --eRule: 120px; }
+      #root { --capX: 40px; --capY: 34px; --capW: 1000px; --capH: 130px; --h1: 48px; --sub: 24px; --subGap: 10px; --winX: 30px; --winY: 172px; --scale: 1.4; --winH: 649px; --tile: 120px; --eName: 92px; --eTag: 38px; --eInfo: 28px; --eUrl: 28px; --eUrlH: 62px; --eUrlPad: 28px; --eGap1: 36px; --eGap2: 20px; --eGap3: 28px; --eRule: 110px; }
     </style>
   </head>
   <body>
-    <div id="root" data-composition-id="main" data-start="0" data-duration="25" data-width="1920" data-height="1080">
+    <div id="root" data-composition-id="main" data-start="0" data-duration="25" data-width="1080" data-height="1080">
       <div class="layer" aria-hidden="true"><i class="glow glow-a" data-layout-allow-overflow></i><i class="glow glow-b" data-layout-allow-overflow></i><i class="glow glow-c" data-layout-allow-overflow></i></div>
       <div id="stage" class="clip layer" data-start="0" data-duration="22.2" data-track-index="1"></div>
       <div id="caps" class="clip captions" data-start="0" data-duration="22" data-track-index="2"></div>
@@ -37,7 +37,7 @@
       ])
         .then(() => document.fonts.ready)
         .then(() => {
-          const tl = window.buildPromo("wide");
+          const tl = window.buildPromo("square");
           window.__timelines["main"] = tl;
         });
     </script>
