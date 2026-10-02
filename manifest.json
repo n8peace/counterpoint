@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Counterpoint",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Every page has an opinion. Counterpoint steelmans the other side. Bring your own model.",
   "permissions": [
     "activeTab",
@@ -16,7 +16,8 @@
     "https://generativelanguage.googleapis.com/*"
   ],
   "background": {
-    "service_worker": "background.js"
+    "service_worker": "background.js",
+    "type": "module"
   },
   "action": {
     "default_title": "Counterpoint this page",
@@ -42,5 +43,8 @@
     "32": "icons/icon32.png",
     "48": "icons/icon48.png",
     "128": "icons/icon128.png"
-  }
+  },
+  "optional_host_permissions": [
+    "<all_urls>"
+  ]
 }

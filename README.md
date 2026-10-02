@@ -6,7 +6,7 @@ Reading "buy this"? It tells you the best case for not buying. Reading "X will w
 
 Two ways to use it:
 
-- **Chrome extension** (this folder). Click the button on any page, press Alt+Shift+C, or highlight text and right-click "Counterpoint this". It shows what the page says, the other side, the strongest arguments, what would settle it, and searches to read more. Ask follow-up questions in the panel. When real numbers help, it draws a small chart or comparison table.
+- **Chrome extension** (this folder). Click the button on any page, press Alt+Shift+C, or highlight text and right-click "Counterpoint this". It answers fast with a short version (what the page says, the other side, three arguments). **Say more** adds the details: what would settle it, searches to read more, and a small chart when real numbers help. Ask follow-up questions in the panel. Keep the panel open and it follows you from tab to tab, showing saved answers instantly; with the free on-device model it can run on new pages by itself.
 - **Agent skill** ([skills/counterpoint](skills/counterpoint/SKILL.md)). Drop it into Claude Code (`~/.claude/skills/`) or any agent that reads `SKILL.md` files, then say "counterpoint this".
 
 ## How it's different

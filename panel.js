@@ -1,5 +1,6 @@
 import { PROVIDERS, chromeModelState, chromeDetail } from "./providers.js";
-import { systemPrompt, userMessage } from "./prompt.js";
+import { systemPrompt, userMessage, SAY_MORE } from "./prompt.js";
+import { readTab } from "./extract.js";
 
 const $ = (id) => document.getElementById(id);
 const out = $("out");
@@ -15,6 +16,7 @@ const ICONS = {
   mark: `<svg viewBox="0 0 40 16" aria-hidden="true"><path d="M2 14 C 14 14, 26 2, 38 2" opacity=".45"/><path d="M2 2 C 14 2, 26 14, 38 14"/></svg>`,
   copy: `<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="8" y="8" width="12" height="12" rx="2"/><path d="M16 8V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h2"/></svg>`,
   refresh: `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 12a8 8 0 1 1-2.34-5.66"/><path d="M20 4v5h-5"/></svg>`,
+  more: `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg>`,
   search: `<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="6"/><path d="M20 20l-4.5-4.5"/></svg>`,
 };
 
@@ -50,7 +52,11 @@ function syncFields(s) {
   $("modelRow").hidden = !p.needsKey;
   $("key").value = s.keys[id] || "";
   $("model").value = s.models[id] || p.defaultModel;
+  $("auto").checked = autoRun({ ...s, provider: id });
 }
+
+// Run on its own when you switch pages? Default: yes for the free on-device model, no when it costs money.
+const autoRun = (s) => s.auto?.[s.provider] ?? !PROVIDERS[s.provider].needsKey;
 
 $("providers").addEventListener("change", async () => syncFields(await loadSettings()));
 $("gear").addEventListener("click", () => openSettings($("settings").hidden));
@@ -61,9 +67,11 @@ $("save").addEventListener("click", async () => {
   s.provider = id;
   s.keys[id] = $("key").value.trim();
   s.models[id] = $("model").value.trim() || PROVIDERS[id].defaultModel;
+  s.auto = { ...s.auto, [id]: $("auto").checked };
   await chrome.storage.local.set({ settings: s });
+  if (s.auto[id]) await askToFollow(); // the click on Save lets us ask for permission
   openSettings(false);
-  if (job) run(job, { fresh: true });
+  runAgain();
 });
 
 // ---------- jobs ----------
@@ -72,6 +80,86 @@ chrome.storage.session.get("job").then(({ job: j }) => (j ? run(j) : welcome()))
 chrome.storage.onChanged.addListener((changes, area) => {
   if (area === "session" && changes.job?.newValue) run(changes.job.newValue);
 });
+
+// ---------- following the active tab ----------
+
+const ALL_SITES = { origins: ["<all_urls>"] };
+let windowId = null;
+chrome.windows?.getCurrent?.().then((w) => (windowId = w.id));
+
+chrome.tabs?.onActivated?.addListener(({ tabId, windowId: w }) => {
+  if (w === windowId) pageChanged(tabId);
+});
+chrome.tabs?.onUpdated?.addListener((tabId, info, tab) => {
+  if (info.status === "complete" && tab.active && tab.windowId === windowId) pageChanged(tabId, true);
+});
+
+const canFollow = () => chrome.permissions?.contains?.(ALL_SITES) ?? Promise.resolve(false);
+// Must be called from a click: Chrome only shows the permission prompt in response to one.
+const askToFollow = () => chrome.permissions?.request?.(ALL_SITES).catch(() => false) ?? Promise.resolve(false);
+const isWebPage = (url) => /^https?:/.test(url || "");
+
+let lastTab = null;
+async function pageChanged(tabId, navigated = false) {
+  if (!navigated && tabId === job?.tabId) return; // back on the page we're showing
+  const tab = await chrome.tabs.get(tabId).catch(() => null);
+  if (!tab) return;
+  lastTab = tab;
+  const can = await canFollow();
+  if (can && tab.url === job?.url && job?.kind === "page") return;
+  if (can && !isWebPage(tab.url)) return newPage(tab, { unreadable: true });
+
+  if (can) {
+    const prior = await saved(keyFor({ kind: "page", url: tab.url }));
+    if (prior) {
+      job = { kind: "page", url: tab.url, title: tab.title, tabId: tab.id };
+      convo = prior;
+      header(job);
+      return show();
+    }
+    if (autoRun(await loadSettings())) return run(await readTab(tab));
+  }
+  newPage(tab, { can });
+}
+
+// A page we haven't countered yet. Offer to, without spending anything.
+function newPage(tab, { can = false, unreadable = false } = {}) {
+  ++runId; // stop anything still drawing for the old page
+  busy = false;
+  job = { kind: "pending", url: tab.url || "", title: tab.title || "", tabId: tab.id };
+  convo = null;
+  header(job);
+  $("composer").hidden = true;
+  if (unreadable) return state({ title: "Nothing to counter here", body: "Counterpoint works on web pages. Chrome doesn't let extensions read its own pages or the Web Store." });
+  state({
+    title: "New page",
+    body: can
+      ? "Want the other side of this one?"
+      : "Want the other side of this one? To follow you from tab to tab, Counterpoint needs Chrome's permission to read the page you're on. It still only sends a page to the model when it runs.",
+    actions: [{ label: "Counterpoint this page", primary: true, onClick: () => counterTab(tab) }],
+  });
+}
+
+async function counterTab(tab) {
+  if (!(await canFollow()) && !(await askToFollow())) {
+    return toast("No permission, so use the Counterpoint button in the toolbar instead.");
+  }
+  const fresh = await chrome.tabs.get(tab.id).catch(() => tab);
+  run(await readTab(fresh));
+}
+
+// Re-run the current page. Restored answers don't keep the page text, so read the tab again.
+async function runAgain() {
+  if (!job || job.kind === "pending") return;
+  if (job.text || job.kind !== "page") return run(job, { fresh: true });
+  const tab = await chrome.tabs.get(job.tabId).catch(() => null);
+  if (tab) run(await readTab(tab), { fresh: true });
+}
+
+function header(j) {
+  $("host").textContent = j.kind === "selection" ? `Selection on ${host(j.url)}` : host(j.url) || "Counterpoint";
+  $("pageTitle").textContent = j.title || "";
+}
 
 function welcome() {
   const mac = /Mac/.test(navigator.platform);
@@ -108,8 +196,7 @@ async function run(j, { fresh = false } = {}) {
   const me = ++runId;
   const live = () => me === runId;
   busy = false;
-  $("host").textContent = j.kind === "selection" ? `Selection on ${host(j.url)}` : host(j.url);
-  $("pageTitle").textContent = j.title || "";
+  header(j);
   $("composer").hidden = true;
   $("via").textContent = "";
 
@@ -141,7 +228,16 @@ async function run(j, { fresh = false } = {}) {
   }
 
   convo = { key, provider: s.provider, model, messages: [{ role: "user", content: userMessage(j, p.maxChars) }] };
-  await think(live, s);
+  await think(live, s, "low");
+}
+
+// Ask for the full version.
+async function sayMore() {
+  if (busy || !convo) return;
+  const s = await loadSettings();
+  convo.messages.push({ role: "user", content: SAY_MORE, more: true });
+  const me = ++runId;
+  await think(() => me === runId, s, "medium");
 }
 
 // Ask a follow-up about the current page.
@@ -153,7 +249,7 @@ $("ask").addEventListener("submit", async (e) => {
   $("question").value = "";
   convo.messages.push({ role: "user", content: q });
   const me = ++runId;
-  await think(() => me === runId, s);
+  await think(() => me === runId, s, "low");
 });
 $("question").addEventListener("input", syncSend);
 
@@ -162,7 +258,7 @@ function syncSend() {
 }
 
 // Send the conversation to the model and draw the result.
-async function think(live, s) {
+async function think(live, s, effort) {
   const c = convo;
   const p = PROVIDERS[c.provider];
   const first = c.messages.length === 1;
@@ -185,13 +281,14 @@ async function think(live, s) {
       const slow = c.provider === "chrome" && secs >= 45 ? " Taking long? Relaunch Chrome, or add an API key in settings." : "";
       skeleton(`${view.body}${secs >= 3 ? ` ${secs}s` : ""}${slow}`);
     } else show({ pending: true });
+    if (c.messages.at(-1).more) return; // the Say more spot already shows progress
   };
   tick();
   const timer = setInterval(() => (live() ? tick() : clearInterval(timer)), 1000);
 
   try {
     const text = await withTimeout(
-      p.run(systemPrompt({ charts: p.charts }), c.messages, { key: s.keys[c.provider], model: c.model }, (update) => {
+      p.run(systemPrompt({ charts: p.charts }), c.messages.map(({ role, content }) => ({ role, content })), { key: s.keys[c.provider], model: c.model, effort }, (update) => {
         if (!live()) return;
         view = typeof update === "string" ? { body: update } : update;
         badge(view.progress !== undefined ? "↓" : "");
@@ -210,7 +307,8 @@ async function think(live, s) {
     if (first) {
       state({ title: "That didn't work", body: e.message, error: true, actions: [{ label: "Try again", primary: true, onClick: () => run(job, { fresh: true }) }] });
     } else {
-      $("question").value = c.messages.pop().content; // give the question back
+      const asked = c.messages.pop();
+      if (!asked.more) $("question").value = asked.content; // give the question back
       show();
       toast(e.message);
     }
@@ -275,8 +373,12 @@ async function chromePreflight(live) {
 // ---------- drawing ----------
 
 function show({ pending = false } = {}) {
-  const [, first, ...rest] = convo.messages;
-  let html = renderAnswer(first.content);
+  const m = convo.messages;
+  const asked = m[2]?.more; // "Say more" was asked
+  const full = asked ? m[3] : null;
+  const main = full || m[1];
+  const rest = m.slice(asked ? 4 : 2);
+  let html = renderAnswer(main.content, { short: !full, loadingMore: asked && !full && pending });
   for (let i = 0; i < rest.length; i += 2) {
     const q = rest[i], a = rest[i + 1];
     html += `<div class="turn"><div class="q">${esc(q.content)}</div>${
@@ -284,8 +386,9 @@ function show({ pending = false } = {}) {
     }</div>`;
   }
   out.innerHTML = html;
-  out.querySelector("[data-copy]")?.addEventListener("click", () => copy(first.content));
-  out.querySelector("[data-again]")?.addEventListener("click", () => run(job, { fresh: true }));
+  out.querySelector("[data-copy]")?.addEventListener("click", () => copy(main.content));
+  out.querySelector("[data-more]")?.addEventListener("click", sayMore);
+  out.querySelector("[data-again]")?.addEventListener("click", runAgain);
   const p = PROVIDERS[convo.provider];
   $("via").textContent = convo.provider === "chrome" ? "Chrome built-in AI · on this computer" : `${p.label} · ${convo.model}`;
   $("composer").hidden = false;
@@ -373,9 +476,14 @@ function parse(md) {
   return parts.says.length && parts.counter.length ? parts : null;
 }
 
-function renderAnswer(md) {
+function renderAnswer(md, { short = false, loadingMore = false } = {}) {
   const p = parse(md);
-  const actions = `<div class="answer-actions">
+  const more = loadingMore
+    ? `<div class="more-loading" aria-label="Loading the full version"><div class="line w90"></div><div class="line w80"></div><div class="line w60"></div></div>`
+    : short
+    ? `<button class="tonal-btn more-btn" data-more>${ICONS.more}Say more</button>`
+    : "";
+  const actions = `${more}<div class="answer-actions">
     <button class="icon-btn" data-copy aria-label="Copy" title="Copy">${ICONS.copy}</button>
     <button class="icon-btn" data-again aria-label="Run again" title="Run again">${ICONS.refresh}</button>
   </div>`;

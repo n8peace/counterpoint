@@ -113,6 +113,8 @@ async function runAnthropic(system, messages, s) {
       model: s.model,
       max_tokens: 16000,
       fallbacks: "default",
+      // Less thinking for the short first answer: most of the wait is thinking.
+      ...(s.effort && !/haiku/.test(s.model) ? { output_config: { effort: s.effort } } : {}),
       system,
       messages,
     }),
