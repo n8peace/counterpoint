@@ -1,0 +1,44 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><title>Counterpoint store fields</title>
+<style>
+body{margin:0;background:#f0f4f9;font:14px/1.5 system-ui,-apple-system,sans-serif;color:#1f1f1f}
+.wrap{max-width:760px;margin:0 auto;padding:28px 20px 60px}
+h1{font-weight:500;font-size:24px;margin:0 0 6px} .lead{color:#444746;margin:0 0 20px}
+section{background:#fff;border-radius:16px;padding:16px 18px;margin:0 0 12px;position:relative}
+.tab{font-size:12px;color:#0b57d0;font-weight:500} h2{font-size:15px;font-weight:500;margin:2px 0 8px}
+pre{white-space:pre-wrap;font:13px/1.5 system-ui,-apple-system,sans-serif;background:#f0f4f9;border-radius:8px;padding:10px 12px;margin:0;max-height:220px;overflow:auto}
+button{position:absolute;top:14px;right:16px;border:0;border-radius:18px;padding:8px 18px;background:#0b57d0;color:#fff;font:500 14px system-ui;cursor:pointer}
+button.done{background:#d3e3fd;color:#041e49}
+.imgs{background:#fff;border-radius:16px;padding:16px 18px;margin:0 0 12px} .imgs li{margin:4px 0}
+</style></head><body><div class="wrap">
+<h1>Counterpoint: Chrome Web Store fields</h1>
+<p class="lead">Click Copy, then paste into the matching box on the dashboard (⌘V). Buttons turn light blue once copied.</p>
+<div class="imgs"><div class="tab">Store listing</div><h2 style="font-size:15px;font-weight:500;margin:2px 0 6px">Images: drag these from the Finder window</h2><ol>
+<li>Store icon: <code>icons/icon128.png</code></li>
+<li>Screenshots, in order: <code>store/assets/screenshot-1-ring.png</code> … <code>screenshot-5-free.png</code></li>
+<li>Small promo tile: <code>store/assets/promo-tile-440x280.png</code></li>
+<li>Package (Package tab, if not uploaded yet): <code>dist/counterpoint-0.2.0.zip</code></li></ol></div>
+<section><div class="tab">Store listing</div><h2>Name (item title)</h2><pre id="f0">Counterpoint: see the other side</pre><button data-i="0">Copy</button></section><section><div class="tab">Store listing</div><h2>Summary</h2><pre id="f1">Every page has an opinion. Counterpoint makes the strongest honest case for the other side. Free on-device AI or your own key.</pre><button data-i="1">Copy</button></section><section><div class="tab">Store listing</div><h2>Description</h2><pre id="f2">Every page is trying to convince you of something. A product page wants you to buy. A forecast wants you to believe it. An op-ed wants you to agree.
+
+Counterpoint reads the page you&#x27;re on, names what it&#x27;s pushing, and makes the strongest honest case for the other side. Not a strawman, not a &quot;both sides&quot; summary: the argument a smart expert who disagrees would actually make.
+
+HOW IT WORKS
+• Click the Counterpoint button (or press Alt+Shift+C) on any page
+• Get a short answer in seconds: what the page says, the other side, and the three strongest arguments
+• Tap Say more for the details: what evidence would settle it, searches to read the other side, and a chart when real numbers help
+• Ask follow-up questions right in the panel
+• Highlight any passage, right-click, and choose &quot;Counterpoint this&quot;
+• Keep the panel open and it follows you from tab to tab
+
+FREE AND PRIVATE BY DEFAULT
+Counterpoint runs on Chrome&#x27;s built-in AI, which works on your computer, offline, at no cost. Nothing leaves your machine.
+
+Prefer a bigger model? Bring your own API key for Claude, OpenAI, or Gemini. Your key stays in your browser and goes only to that provider.
+
+NO SERVER, NO ACCOUNT, OPEN SOURCE
+There&#x27;s no Counterpoint server and no sign-up. The code is MIT-licensed on GitHub, along with a matching agent skill for Claude Code and other agents: https://github.com/n8peace/counterpoint</pre><button data-i="2">Copy</button></section><section><div class="tab">Store listing</div><h2>Category</h2><pre id="f3">Productivity</pre><button data-i="3">Copy</button></section><section><div class="tab">Store listing</div><h2>Language</h2><pre id="f4">English</pre><button data-i="4">Copy</button></section><section><div class="tab">Privacy</div><h2>Single purpose description</h2><pre id="f5">Counterpoint shows the strongest counter-argument to the web page or text selection the user is viewing, in Chrome&#x27;s side panel.</pre><button data-i="5">Copy</button></section><section><div class="tab">Privacy</div><h2>Justification: activeTab</h2><pre id="f6">read the current page&#x27;s text when the user clicks the toolbar button, uses the shortcut, or the context menu.</pre><button data-i="6">Copy</button></section><section><div class="tab">Privacy</div><h2>Justification: scripting</h2><pre id="f7">extract the readable text of that page.</pre><button data-i="7">Copy</button></section><section><div class="tab">Privacy</div><h2>Justification: sidePanel</h2><pre id="f8">show the counter-argument next to the page.</pre><button data-i="8">Copy</button></section><section><div class="tab">Privacy</div><h2>Justification: storage</h2><pre id="f9">save settings and the user&#x27;s own API keys locally, and recent answers for the session.</pre><button data-i="9">Copy</button></section><section><div class="tab">Privacy</div><h2>Justification: contextMenus</h2><pre id="f10">add &quot;Counterpoint this&quot; for selected text.</pre><button data-i="10">Copy</button></section><section><div class="tab">Privacy</div><h2>Justification: Host permissions for api.anthropic.com, api.openai.com, generativelanguage.googleapis.com</h2><pre id="f11">send the page text to the AI provider the user chose, with the user&#x27;s own key.</pre><button data-i="11">Copy</button></section><section><div class="tab">Privacy</div><h2>Justification: Optional host permission (all sites)</h2><pre id="f12">requested only if the user asks the panel to follow them between tabs, so it can read the page they switch to.</pre><button data-i="12">Copy</button></section><section><div class="tab">Privacy</div><h2>Are you using remote code?</h2><pre id="f13">No. All code ships in the package. Model responses are treated as text and data, never executed.</pre><button data-i="13">Copy</button></section><section><div class="tab">Privacy</div><h2>Data usage: what to tick</h2><pre id="f14">Website content (page text): ticked.
+Authentication information (the user&#x27;s own API keys, stored locally): ticked.
+Everything else: not ticked.
+Then tick all three certifications: not sold to third parties, not used for unrelated purposes, not used for creditworthiness or lending.</pre><button data-i="14">Copy</button></section><section><div class="tab">Privacy</div><h2>Privacy policy URL</h2><pre id="f15">https://github.com/n8peace/counterpoint/blob/master/PRIVACY.md</pre><button data-i="15">Copy</button></section>
+</div><script>
+document.querySelectorAll("button").forEach(b=>b.onclick=async()=>{await navigator.clipboard.writeText(document.getElementById("f"+b.dataset.i).innerText);b.textContent="Copied";b.classList.add("done")});
+</script></body></html>
