@@ -33,18 +33,26 @@ export const PROVIDERS = {
   },
 };
 
+const CHROME_LANGS = {
+  expectedInputs: [{ type: "text", languages: ["en"] }],
+  expectedOutputs: [{ type: "text", languages: ["en"] }],
+};
+
+// "missing" | "unavailable" | "downloadable" | "downloading" | "available"
+export async function chromeModelState() {
+  if (typeof LanguageModel === "undefined") return "missing";
+  return LanguageModel.availability(CHROME_LANGS);
+}
+
 async function runChrome(system, user, _s, onStatus) {
-  if (typeof LanguageModel === "undefined") {
+  const state = await chromeModelState();
+  if (state === "missing") {
     throw new Error("Chrome built-in AI isn't available in this Chrome. Update Chrome, or pick an API key provider.");
   }
-  const langs = {
-    expectedInputs: [{ type: "text", languages: ["en"] }],
-    expectedOutputs: [{ type: "text", languages: ["en"] }],
-  };
-  const availability = await LanguageModel.availability(langs);
-  if (availability === "unavailable") {
+  if (state === "unavailable") {
     throw new Error("This device can't run Chrome's built-in model. Pick an API key provider instead.");
   }
+  const langs = CHROME_LANGS;
   const session = await LanguageModel.create({
     ...langs,
     initialPrompts: [{ role: "system", content: system }],
@@ -54,6 +62,7 @@ async function runChrome(system, user, _s, onStatus) {
       );
     },
   });
+  onStatus?.("Reading the page…");
   try {
     return await session.prompt(user);
   } finally {

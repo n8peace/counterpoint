@@ -1,4 +1,4 @@
-import { PROVIDERS } from "./providers.js";
+import { PROVIDERS, chromeModelState } from "./providers.js";
 import { SYSTEM, userMessage } from "./prompt.js";
 
 const $ = (id) => document.getElementById(id);
@@ -66,18 +66,51 @@ async function run(job) {
     return show("Pick a model and add your API key in settings to start.", "status");
   }
 
-  show("Finding the other side…", "status");
+  // Chrome only starts its one-time model download from a click inside this panel.
+  if (s.provider === "chrome" && !navigator.userActivation.isActive) {
+    const state = await chromeModelState();
+    if (state === "downloadable") return askToDownload(job);
+  }
+
+  let status = "Finding the other side…";
+  const started = Date.now();
+  const tick = () => {
+    const secs = Math.round((Date.now() - started) / 1000);
+    show(secs >= 3 ? `${status} ${secs}s` : status, "status");
+  };
+  tick();
+  const timer = setInterval(() => current === job ? tick() : clearInterval(timer), 1000);
   try {
-    const text = await p.run(
-      SYSTEM,
-      userMessage(job, p.maxChars),
-      { key, model: s.models[s.provider] || p.defaultModel },
-      (msg) => current === job && show(msg, "status")
+    const text = await withTimeout(
+      p.run(
+        SYSTEM,
+        userMessage(job, p.maxChars),
+        { key, model: s.models[s.provider] || p.defaultModel },
+        (msg) => { status = msg; if (current === job) tick(); }
+      ),
+      s.provider === "chrome" ? 600_000 : 180_000
     );
     if (current === job) out.innerHTML = render(text);
   } catch (e) {
     if (current === job) show(e.message, "error");
+  } finally {
+    clearInterval(timer);
   }
+}
+
+function askToDownload(job) {
+  out.innerHTML = `<p class="status">Chrome's free AI model isn't on this computer yet. It's a one-time download of a few GB, then it runs offline.</p>
+    <button class="primary" id="download">Download and run</button>`;
+  $("download").addEventListener("click", () => run(job));
+}
+
+function withTimeout(promise, ms) {
+  return Promise.race([
+    promise,
+    new Promise((_, reject) =>
+      setTimeout(() => reject(new Error(`No answer after ${ms / 60000} minutes. Try Run again, or switch to an API key in settings.`)), ms)
+    ),
+  ]);
 }
 
 function show(msg, cls) {
