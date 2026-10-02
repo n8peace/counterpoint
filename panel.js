@@ -5,6 +5,7 @@ const $ = (id) => document.getElementById(id);
 const out = $("out");
 const MIN_CHROME = 138;
 let current = null;
+let runId = 0; // each run gets a number; only the newest one may draw
 let chromeReport = ""; // e.g. "Chrome 152 · model: downloading"
 
 // The mark: the page's line and the other side's line, moving in contrary motion.
@@ -81,6 +82,8 @@ function welcome() {
 
 async function run(job) {
   current = job;
+  const me = ++runId;
+  const live = () => me === runId;
   $("host").textContent = job.kind === "selection" ? `Selection on ${host(job.url)}` : host(job.url);
   $("pageTitle").textContent = job.title || "";
   $("foot").hidden = false;
@@ -92,6 +95,7 @@ async function run(job) {
   }
 
   const s = await loadSettings();
+  if (!live()) return;
   const p = PROVIDERS[s.provider];
   const key = s.keys[s.provider];
   const model = s.models[s.provider] || p.defaultModel;
@@ -99,7 +103,7 @@ async function run(job) {
     openSettings(true);
     return state({ title: `Add your ${p.label} key`, body: "Paste it in settings above, or pick Chrome built-in AI to run free on your computer." });
   }
-  if (s.provider === "chrome" && !(await chromePreflight(job))) return;
+  if (s.provider === "chrome" && !(await chromePreflight(job, live))) return;
 
   // view: { title?, body, progress? (undefined = none, null = unknown, 0..1) }
   let view = { body: "Finding the other side…" };
@@ -120,30 +124,31 @@ async function run(job) {
     });
   };
   tick();
-  const timer = setInterval(() => (current === job ? tick() : clearInterval(timer)), 1000);
+  const timer = setInterval(() => (live() ? tick() : clearInterval(timer)), 1000);
   try {
     const text = await withTimeout(
       p.run(SYSTEM, userMessage(job, p.maxChars), { key, model }, (update) => {
         view = typeof update === "string" ? { body: update } : update;
-        badge(view.progress !== undefined ? "↓" : "");
-        if (current === job) tick();
+        if (live()) badge(view.progress !== undefined ? "↓" : "");
+        if (live()) tick();
       }),
       s.provider === "chrome" ? 1_800_000 : 180_000
     );
-    if (current !== job) return;
+    if (!live()) return;
     out.innerHTML = renderResult(text);
     $("via").textContent = s.provider === "chrome" ? "Chrome built-in AI · on this computer" : `${p.label} · ${model}`;
   } catch (e) {
-    if (current === job) state({ title: "That didn't work", body: e.message, error: true, actions: [{ label: "Try again", primary: true, onClick: () => run(job) }] });
+    if (live()) state({ title: "That didn't work", body: e.message, error: true, actions: [{ label: "Try again", primary: true, onClick: () => run(job) }] });
   } finally {
     clearInterval(timer);
-    badge("");
+    if (live()) badge("");
   }
 }
 
 // Explain Chrome's built-in AI state before trying it. Returns true when it can run.
-async function chromePreflight(job) {
+async function chromePreflight(job, live) {
   const st = await chromeModelState();
+  if (!live()) return false;
   const version = Number(navigator.userAgent.match(/Chrome\/(\d+)/)?.[1] || 0);
   chromeReport = `Chrome ${version || "?"} · model: ${chromeDetail}`;
   const useKey = { label: "Use an API key instead", onClick: () => openSettings(true) };
