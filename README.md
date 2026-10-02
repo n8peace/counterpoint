@@ -9,6 +9,13 @@ Two ways to use it:
 - **Chrome extension** (this folder). Click the button on any page, press Alt+Shift+C, or highlight text and right-click "Counterpoint this".
 - **Agent skill** ([skills/counterpoint](skills/counterpoint/SKILL.md)). Drop it into Claude Code (`~/.claude/skills/`) or any agent that reads `SKILL.md` files, then say "counterpoint this".
 
+## How it's different
+
+- **Any page, not just news.** Product pages, forecasts, pitches, op-eds, threads. It names the page's stance first, then argues the other side.
+- **A real steelman, not a balanced summary.** It commits to the opposite case and makes it as strong as an honest expert would.
+- **No server, no account, no subscription.** Free on-device AI, or your own key from Anthropic, OpenAI, or Google.
+- **Same brain, two places.** The browser extension and the agent skill share one set of rules, so you get the same counterpoint in Chrome or in your agent.
+
 ## Bring your own model
 
 Counterpoint has no server and costs nothing to run. Pick one:
