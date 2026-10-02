@@ -4,28 +4,32 @@
 
 export const PROVIDERS = {
   chrome: {
-    label: "Chrome built-in AI (free, on-device)",
+    label: "Chrome built-in AI",
+    blurb: "Free. Runs on your computer.",
     needsKey: false,
     defaultModel: "gemini-nano",
     maxChars: 6000, // small context window
     run: runChrome,
   },
   anthropic: {
-    label: "Claude (Anthropic API key)",
+    label: "Claude",
+    blurb: "Your Anthropic API key",
     needsKey: true,
     defaultModel: "claude-opus-5-5",
     maxChars: 60000,
     run: runAnthropic,
   },
   openai: {
-    label: "OpenAI (API key)",
+    label: "OpenAI",
+    blurb: "Your OpenAI API key",
     needsKey: true,
     defaultModel: "gpt-5-mini",
     maxChars: 60000,
     run: runOpenAI,
   },
   gemini: {
-    label: "Google Gemini (API key)",
+    label: "Gemini",
+    blurb: "Your Google AI Studio key",
     needsKey: true,
     defaultModel: "gemini-2.5-flash",
     maxChars: 60000,

@@ -42,4 +42,4 @@ Counterpoint only reads a page when you click it. The page text goes to the mode
 
 ## License
 
-MIT
+MIT. Bundled fonts, [Schibsted Grotesk](https://fonts.google.com/specimen/Schibsted+Grotesk) and [Newsreader](https://fonts.google.com/specimen/Newsreader), are under the SIL Open Font License (see `fonts/`).
