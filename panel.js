@@ -66,45 +66,124 @@ async function run(job) {
     return show("Pick a model and add your API key in settings to start.", "status");
   }
 
-  // Chrome only starts its one-time model download from a click inside this panel.
-  if (s.provider === "chrome" && !navigator.userActivation.isActive) {
-    const state = await chromeModelState();
-    if (state === "downloadable") return askToDownload(job);
+  if (s.provider === "chrome") {
+    const ready = await chromePreflight(job);
+    if (!ready) return;
   }
 
-  let status = "Finding the other side…";
+  // view: { title?, body, progress? (undefined none, null spinning, 0..1) }
+  let view = { body: "Finding the other side…" };
   const started = Date.now();
   const tick = () => {
     const secs = Math.round((Date.now() - started) / 1000);
-    show(secs >= 3 ? `${status} ${secs}s` : status, "status");
-    if (s.provider === "chrome" && secs >= 30) {
-      out.insertAdjacentHTML("beforeend", `<p class="hint">Taking long? Chrome may need a relaunch, or you can add an API key in settings for a faster answer.</p>`);
-    }
+    const downloading = view.progress !== undefined;
+    card({
+      ...view,
+      meta: secs >= 3 ? `${secs}s` : "",
+      hint:
+        !downloading && s.provider === "chrome" && secs >= 45
+          ? "Taking long? Relaunch Chrome, or add an API key in settings for a faster answer."
+          : downloading
+          ? "You can keep browsing. Leave this panel open until it finishes."
+          : "",
+    });
   };
   tick();
-  const timer = setInterval(() => current === job ? tick() : clearInterval(timer), 1000);
+  const timer = setInterval(() => (current === job ? tick() : clearInterval(timer)), 1000);
   try {
     const text = await withTimeout(
       p.run(
         SYSTEM,
         userMessage(job, p.maxChars),
         { key, model: s.models[s.provider] || p.defaultModel },
-        (msg) => { status = msg; if (current === job) tick(); }
+        (update) => {
+          view = typeof update === "string" ? { body: update } : update;
+          badge(view.progress !== undefined ? "↓" : "");
+          if (current === job) tick();
+        }
       ),
-      s.provider === "chrome" ? 600_000 : 180_000
+      s.provider === "chrome" ? 1_800_000 : 180_000
     );
     if (current === job) out.innerHTML = render(text);
   } catch (e) {
     if (current === job) show(e.message, "error");
   } finally {
     clearInterval(timer);
+    badge("");
   }
 }
 
-function askToDownload(job) {
-  out.innerHTML = `<p class="status">Chrome's free AI model isn't on this computer yet. It's a one-time download of a few GB, then it runs offline.</p>
-    <button class="primary" id="download">Download and run</button>`;
-  $("download").addEventListener("click", () => run(job));
+// Explain Chrome's built-in AI state before trying it. Returns true when it can run.
+async function chromePreflight(job) {
+  const state = await chromeModelState();
+  const version = Number(navigator.userAgent.match(/Chrome\/(\d+)/)?.[1] || 0);
+  const useKey = { label: "Use an API key instead", onClick: () => ($("settings").hidden = false) };
+
+  if (state === "missing") {
+    const tooOld = !version || version < MIN_CHROME;
+    card(
+      tooOld
+        ? {
+            title: "Chrome update required",
+            body: `Counterpoint's free mode uses Chrome's built-in AI, which needs Chrome ${MIN_CHROME} or newer.${version ? ` You have Chrome ${version}.` : ""}`,
+            hint: "To update: Chrome menu (⋮) → Help → About Google Chrome, then click Relaunch.",
+            actions: [{ label: "Check again", primary: true, onClick: () => run(job) }, useKey],
+          }
+        : {
+            title: "Chrome's built-in AI is turned off",
+            body: `You have Chrome ${version}, which supports it, but it isn't switched on here. If Chrome shows "Relaunch to update", relaunch first.`,
+            hint: "On a work or school computer, your organization may have turned it off. You can always use your own API key instead.",
+            actions: [{ label: "Check again", onClick: () => run(job) }, { ...useKey, primary: true }],
+          }
+    );
+    return false;
+  }
+  if (state === "unavailable") {
+    card({
+      title: "This computer can't run Chrome's AI",
+      body: "Chrome's built-in model needs about 22 GB of free disk space and either a GPU with more than 4 GB of memory or 16 GB of RAM.",
+      hint: "Free up disk space and check again, or use your own API key.",
+      actions: [{ label: "Check again", onClick: () => run(job) }, { ...useKey, primary: true }],
+    });
+    return false;
+  }
+  // Chrome only starts the download from a click inside this panel.
+  if (state === "downloadable" && !navigator.userActivation.isActive) {
+    card({
+      title: "One-time setup",
+      body: "Counterpoint's free mode runs on Chrome's built-in AI. Chrome needs to download the model once (a few GB). After that it runs on your computer, offline, at no cost.",
+      actions: [{ label: "Download model and run", primary: true, onClick: () => run(job) }, useKey],
+    });
+    return false;
+  }
+  return true;
+}
+
+const MIN_CHROME = 138;
+
+function card({ title, body, progress, meta, hint, actions = [] }) {
+  out.innerHTML = `<div class="card">
+    ${title ? `<h2>${esc(title)}</h2>` : ""}
+    <p class="status">${esc(body)}${meta ? ` <span class="meta">${esc(meta)}</span>` : ""}</p>
+    ${progress === undefined ? "" : progress === null
+      ? `<div class="bar indeterminate"><span></span></div>`
+      : `<div class="bar"><span style="width:${Math.round(progress * 100)}%"></span></div><p class="pct">${Math.round(progress * 100)}%</p>`}
+    ${hint ? `<p class="hint">${esc(hint)}</p>` : ""}
+    <div class="actions"></div>
+  </div>`;
+  const row = out.querySelector(".actions");
+  for (const a of actions) {
+    const b = document.createElement("button");
+    b.textContent = a.label;
+    if (a.primary) b.className = "primary";
+    b.addEventListener("click", a.onClick);
+    row.append(b);
+  }
+}
+
+function badge(text) {
+  chrome.action?.setBadgeBackgroundColor?.({ color: "#c2410c" });
+  chrome.action?.setBadgeText?.({ text });
 }
 
 function withTimeout(promise, ms) {
