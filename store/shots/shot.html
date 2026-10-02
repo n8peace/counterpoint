@@ -1,0 +1,112 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Counterpoint store screenshot</title>
+<style>
+  /* 1280x800 Chrome Web Store screenshot. Sites shown are made up. */
+  :root {
+    --bg: #e8eef8; --ink: #1f1f1f; --muted: #444746; --blue: #0b57d0; --line: #dde3ea;
+    --font: "Google Sans", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; width: 1280px; height: 800px; overflow: hidden; }
+  body { background: var(--bg); font-family: var(--font); color: var(--ink); }
+  .caption { height: 168px; padding: 44px 64px 0; }
+  .caption h1 { margin: 0; font-size: 40px; font-weight: 500; letter-spacing: -0.01em; }
+  .caption h1 em { font-style: normal; color: var(--blue); }
+  .caption p { margin: 10px 0 0; font-size: 19px; color: var(--muted); }
+  .window {
+    position: absolute; left: 64px; right: 64px; top: 168px; bottom: 0;
+    background: #fff; border-radius: 16px 16px 0 0; overflow: hidden;
+    box-shadow: 0 12px 40px rgba(31, 52, 92, .18), 0 1px 3px rgba(31, 52, 92, .12);
+    display: grid; grid-template-rows: 48px 1fr;
+  }
+  .toolbar { display: flex; align-items: center; gap: 12px; padding: 0 14px; background: #f1f4f9; border-bottom: 1px solid var(--line); }
+  .dots { display: flex; gap: 7px; }
+  .dots i { width: 12px; height: 12px; border-radius: 50%; background: #d5dbe3; }
+  .url { flex: 1; height: 32px; border-radius: 16px; background: #fff; display: flex; align-items: center; padding: 0 14px; font-size: 14px; color: var(--muted); }
+  .url b { color: var(--ink); font-weight: 400; }
+  .ext { width: 28px; height: 28px; border-radius: 8px; background: var(--blue); display: grid; place-items: center; box-shadow: 0 0 0 3px #c7d7f7; }
+  .ext svg { width: 18px; height: 9px; fill: none; stroke: #fff; stroke-width: 2.6; stroke-linecap: round; }
+  .ext svg path:first-child { stroke: #a8c7fa; }
+  .body { display: grid; grid-template-columns: 1fr 380px; min-height: 0; }
+  .page { overflow: hidden; padding: 36px 44px; position: relative; }
+  iframe { width: 380px; height: 100%; border: 0; border-left: 1px solid var(--line); }
+
+  /* made-up pages */
+  .shop { display: grid; grid-template-columns: 300px 1fr; gap: 32px; align-items: start; }
+  .shop .photo { aspect-ratio: 1; border-radius: 20px; background: radial-gradient(circle at 50% 45%, #2b2f36 0 27%, #9aa3ad 28% 33%, #e9edf1 34%); }
+  .brand { font-size: 13px; letter-spacing: .14em; text-transform: uppercase; color: var(--muted); }
+  .shop h2 { margin: 8px 0 10px; font-size: 30px; font-weight: 500; }
+  .price { font-size: 22px; margin: 0 0 6px; }
+  .small { font-size: 14px; color: var(--muted); margin: 0 0 18px; }
+  .buy { display: inline-block; padding: 12px 28px; border-radius: 24px; background: #1f1f1f; color: #fff; font-size: 15px; }
+  .perks { margin: 22px 0 0; padding: 0; list-style: none; display: grid; gap: 8px; font-size: 15px; color: var(--muted); }
+  .article { max-width: 560px; }
+  .article .kicker { font-size: 13px; letter-spacing: .12em; text-transform: uppercase; color: #a33; }
+  .article h2 { margin: 10px 0 12px; font: 600 34px/1.15 Georgia, "Times New Roman", serif; }
+  .article .by { font-size: 13px; color: var(--muted); margin-bottom: 18px; }
+  .article p { font: 17px/1.6 Georgia, "Times New Roman", serif; color: #333; margin: 0 0 14px; }
+  mark { background: #c2d7fb; color: inherit; padding: 1px 0; }
+  .menu { position: absolute; left: 330px; top: 318px; width: 230px; background: #fff; border-radius: 8px; box-shadow: 0 6px 24px rgba(0,0,0,.18); padding: 6px 0; font-size: 14px; }
+  .menu div { padding: 7px 16px; color: var(--muted); }
+  .menu .on { background: #e8f0fe; color: var(--ink); display: flex; gap: 10px; align-items: center; }
+  .menu .on svg { width: 16px; height: 8px; fill: none; stroke: var(--blue); stroke-width: 2.6; stroke-linecap: round; }
+  .menu hr { border: 0; border-top: 1px solid var(--line); margin: 6px 0; }
+  .ev h2 { margin: 6px 0 14px; font-size: 44px; font-weight: 500; line-height: 1.1; }
+  .ev .hero { height: 200px; border-radius: 20px; background: linear-gradient(120deg, #0f3d3e, #2f7d6d); margin-bottom: 22px; position: relative; }
+  .ev .hero::after { content: ""; position: absolute; left: 12%; right: 12%; bottom: 34px; height: 60px; border-radius: 40px 60px 14px 14px; background: #e9f3ef; }
+  .stat { display: inline-block; margin-right: 28px; }
+  .stat b { display: block; font-size: 28px; font-weight: 500; }
+  .stat span { font-size: 13px; color: var(--muted); }
+</style>
+</head>
+<body>
+  <header class="caption"><h1 id="h"></h1><p id="sub"></p></header>
+  <div class="window">
+    <div class="toolbar">
+      <div class="dots"><i></i><i></i><i></i></div>
+      <div class="url" id="url"></div>
+      <div class="ext"><svg viewBox="0 0 40 16"><path d="M2 14 C 14 14, 26 2, 38 2"/><path d="M2 2 C 14 2, 26 14, 38 14"/></svg></div>
+    </div>
+    <div class="body">
+      <div class="page" id="page"></div>
+      <iframe id="panel" title="Counterpoint panel"></iframe>
+    </div>
+  </div>
+<script>
+const MARK = '<svg viewBox="0 0 40 16"><path d="M2 14 C 14 14, 26 2, 38 2"/><path d="M2 2 C 14 2, 26 14, 38 14"/></svg>';
+const ring = `<div class="shop"><div class="photo"></div><div>
+  <div class="brand">Noctra</div><h2>Noctra Ring</h2>
+  <p class="price">$349 <span class="small">+ $6/month membership</span></p>
+  <p class="small">Know your sleep. Fix your sleep. Wake up ready.</p>
+  <span class="buy">Add to cart</span>
+  <ul class="perks"><li>Tracks deep, light and REM sleep</li><li>Nightly sleep score and coaching</li><li>7-day battery, titanium build</li></ul></div></div>`;
+const SCENES = {
+  ring: { h: "See the <em>other side</em> of any page", sub: "Counterpoint names what a page is pushing and makes the strongest honest case against it.", url: "shop.noctra.com/ring", page: ring },
+  remote: { h: "Say more for the <em>full case</em>", sub: "What would settle it, searches to read further, and side-by-side comparisons.", url: "brightwaterreview.com/opinion/office-is-over",
+    page: `<div class="article"><div class="kicker">Opinion</div><h2>The office is over. Good riddance.</h2><div class="by">Editorial · 6 min read</div>
+    <p>Three years of data have settled the question. People do their best work when they control their time and space, and the daily commute was always a tax we pretended not to notice.</p>
+    <p>Companies that dragged everyone back are losing talent to companies that didn't. The office had a good run. It's time to let it go.</p></div>` },
+  followup: { h: "Keep pushing with <em>follow-ups</em>", sub: "Ask anything about the other side, right in the panel.", url: "arden-ev.com/save",
+    page: `<div class="ev"><div class="brand">Arden EV</div><h2>Go electric.<br>Save every year.</h2><div class="hero"></div>
+    <div class="stat"><b>$1,200</b><span>yearly fuel savings*</span></div><div class="stat"><b>310 mi</b><span>range</span></div><div class="stat"><b>$0</b><span>oil changes</span></div></div>` },
+  select: { h: "Highlight any claim to <em>challenge it</em>", sub: "Right-click selected text and choose Counterpoint this.", url: "northgatedaily.com/work/four-day-week",
+    page: `<div class="article"><div class="kicker">Work</div><h2>The four-day week is coming</h2><div class="by">Work desk · 4 min read</div>
+    <p>After a wave of trials, the verdict is in. <mark>A four-day week makes every company more productive.</mark> Workers are happier, and output holds steady or rises.</p>
+    <p>Holdouts are running out of excuses. The five-day week is a habit, not a law of nature.</p></div>
+    <div class="menu"><div>Copy</div><div>Search Google for this</div><hr><div class="on">${MARK}Counterpoint this</div><hr><div>Inspect</div></div>` },
+  free: { h: "<em>Free and private</em> by default", sub: "Runs on Chrome's built-in AI, on your computer. Or bring your own Claude, OpenAI, or Gemini key.", url: "shop.noctra.com/ring", page: ring },
+};
+const name = new URLSearchParams(location.search).get("scene") || "ring";
+const s = SCENES[name];
+document.getElementById("h").innerHTML = s.h;
+document.getElementById("sub").textContent = s.sub;
+const [domain, ...rest] = s.url.split("/");
+document.getElementById("url").innerHTML = `<b>${domain}</b>/${rest.join("/")}`;
+document.getElementById("page").innerHTML = s.page;
+document.getElementById("panel").src = `panel-demo.html?scene=${name}`;
+</script>
+</body>
+</html>

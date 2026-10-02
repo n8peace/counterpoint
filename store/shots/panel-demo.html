@@ -1,0 +1,73 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><link rel="stylesheet" href="../../panel.css"></head><body><script>
+// Demo panel for store screenshots: loads a saved answer for the scene, no model calls.
+const SCENES = {"ring": {"job": {"kind": "page", "url": "https://shop.noctra.com/ring", "title": "Noctra Ring: Sleep smarter", "tabId": 1}, "msgs": ["**The page says:** You should buy the Noctra Ring to understand and improve your sleep.\n\n**The counterpoint:** Most people sleep no better a year after buying a tracker, and $349 plus a monthly fee buys advice you can get for free.\n\n**Strongest arguments**\n- Rings estimate sleep stages from pulse and movement, and they're much less accurate on stages than the ads suggest.\n- The advice it ends up giving, a steady bedtime and less late caffeine, is free and well known.\n- Some people sleep worse from chasing a nightly score, a pattern sleep researchers call orthosomnia."]}, "remote": {"job": {"kind": "page", "url": "https://brightwaterreview.com/opinion/office-is-over", "title": "The office is over. Good riddance.", "tabId": 1}, "msgs": ["**The page says:** Remote work is better for workers and companies.\n\n**The counterpoint:** For many people the office builds skills and careers.\n\n**Strongest arguments**\n- a\n- b\n- c", "MORE", "**The page says:** Remote work is better for workers and companies, and the office is a relic.\n\n**The counterpoint:** For many people, especially early in their careers, the office is where skills, trust and promotions get built, and fully remote work quietly taxes them.\n\n**Strongest arguments**\n- Junior staff learn by overhearing and asking quick questions; remote setups make that slower and more formal.\n- Promotions tend to go to people senior leaders see and know, which favors whoever is in the room.\n- Collaboration across teams tends to shrink when everyone is remote, even when individual focus improves.\n\n```chart\n{\"type\": \"compare\", \"title\": \"What each setup is best at\", \"columns\": [\"Fully remote\", \"Hybrid\"], \"rows\": [{\"label\": \"Focus time\", \"values\": [\"Strong\", \"Strong\"]}, {\"label\": \"Learning on the job\", \"values\": [\"Slower\", \"Faster\"]}, {\"label\": \"Visibility\", \"values\": [\"Harder\", \"Easier\"]}, {\"label\": \"Commute\", \"values\": [\"None\", \"2 to 3 days\"]}], \"note\": \"A summary of tradeoffs, not measured data.\"}\n```\n\n**What would settle it**\n- Skill growth and promotion rates for junior staff at remote versus hybrid companies over several years.\n\n**Search the other side**\n- remote work mentorship junior employees research\n- remote work collaboration network study"]}, "followup": {"job": {"kind": "page", "url": "https://arden-ev.com/save", "title": "Arden EV: Go electric. Save every year.", "tabId": 1}, "msgs": ["**The page says:** Switching to this electric car will save you money every year.\n\n**The counterpoint:** Whether an EV saves you money depends on how much you drive and what you pay for power, and for many drivers the payback takes years.\n\n**Strongest arguments**\n- The savings figure assumes average mileage; drive less and the yearly savings shrink with it.\n- A higher sticker price and a home charger can take years of fuel savings to pay back.\n- Public fast charging can cost about as much per mile as gas.", "Q:What if I only drive 5,000 miles a year?", "Then the money case gets much weaker:\n\n- Fuel savings scale with miles, so at about half the typical mileage you'd save about half the advertised amount.\n- That stretches the payback on the higher price past the point many people keep a car.\n- Check what you actually spent on gas last year before deciding."]}, "select": {"job": {"kind": "selection", "url": "https://northgatedaily.com/work/four-day-week", "title": "Northgate Daily: The four-day week is coming", "tabId": 1, "text": "A four-day week makes every company more productive."}, "msgs": ["**The page says:** A four-day work week makes companies more productive.\n\n**The counterpoint:** The trials behind this claim mostly involved companies that chose to try it, so they can't show it would work everywhere.\n\n**Strongest arguments**\n- Companies that volunteer for a four-day trial expect it to work, which tilts the results.\n- Many results rest on self-reported productivity rather than measured output.\n- Jobs tied to coverage hours, like support or healthcare, can't compress the week the same way."]}, "free": {"job": {"kind": "page", "url": "https://shop.noctra.com/ring", "title": "Noctra Ring: Sleep smarter", "tabId": 1}, "settings": true, "msgs": ["**The page says:** You should buy the Noctra Ring to understand and improve your sleep.\n\n**The counterpoint:** Most people sleep no better a year after buying a tracker.\n\n**Strongest arguments**\n- a\n- b\n- c"]}};
+const sc = SCENES[new URLSearchParams(location.search).get("scene") || "ring"];
+const job = { id: 1, text: "Demo page text for the store screenshot. ".repeat(4), ...sc.job };
+const key = `${job.kind}|${job.url}|${job.kind === "selection" ? job.text.slice(0, 200) : ""}`;
+const messages = [{ role: "user", content: "page" }];
+for (const m of sc.msgs) {
+  if (m === "MORE") messages.push({ role: "user", content: "Say more. Give the full version.", more: true });
+  else if (m.startsWith("Q:")) messages.push({ role: "user", content: m.slice(2) });
+  else messages.push({ role: "assistant", content: m });
+}
+const store = { local: { stats: { rated: true } }, session: { job, results: { [key]: { key, provider: "chrome", model: "gemini-nano", messages } } } };
+const area = (n) => ({ get: async (k) => ({ [k]: store[n][k] }), set: async (o) => Object.assign(store[n], o) });
+window.chrome = {
+  storage: { local: area("local"), session: area("session"), onChanged: { addListener() {} } },
+  windows: { getCurrent: async () => ({ id: 1 }) },
+  tabs: { get: async () => null, onActivated: { addListener() {} }, onUpdated: { addListener() {} } },
+  permissions: { contains: async () => true, request: async () => true },
+};
+window.LanguageModel = { availability: async () => "available" };
+if (sc.settings) addEventListener("load", () => setTimeout(() => document.getElementById("gear").click(), 200));
+// For the "Say more" shot, scroll so the full version's extras are in view.
+if (sc.job.url.includes("office-is-over")) addEventListener("load", () => setTimeout(() => {
+  const out = document.getElementById("out"), chart = out.querySelector(".chart");
+  if (chart) out.scrollTop += chart.getBoundingClientRect().top - out.getBoundingClientRect().top - 12;
+}, 300));
+</script>
+  <header class="topbar">
+    <div class="source">
+      <span class="host" id="host">Counterpoint</span>
+      <span class="page-title" id="pageTitle"></span>
+    </div>
+    <button id="gear" class="icon-btn" aria-label="Model settings" title="Model settings" aria-expanded="false" aria-controls="settings">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h9M17 7h3M4 17h3M11 17h9"/><circle cx="15" cy="7" r="2"/><circle cx="9" cy="17" r="2"/></svg>
+    </button>
+  </header>
+
+  <section id="settings" class="settings" hidden>
+    <h2 class="settings-title">Model</h2>
+    <div id="providers" class="providers" role="radiogroup" aria-label="Model"></div>
+    <label id="keyRow" class="field"><span>API key</span>
+      <input id="key" type="password" autocomplete="off" spellcheck="false" placeholder="Paste your key">
+    </label>
+    <label id="modelRow" class="field"><span>Model name</span>
+      <input id="model" type="text" spellcheck="false">
+    </label>
+    <label class="switch-row"><input id="auto" type="checkbox"><span><b>Run on its own when I switch pages</b><small>Pages you've already countered always show their saved answer.</small></span></label>
+    <p class="fine">Your key stays in this browser and only goes to the provider you pick. They bill you directly.</p>
+    <div class="row">
+      <button id="cancel" class="text-btn">Cancel</button>
+      <button id="save" class="filled-btn">Save</button>
+    </div>
+  </section>
+
+  <main id="out" aria-live="polite">
+    <div class="state checking"><div class="progress unknown"><span></span></div><p>Getting ready…</p></div>
+  </main>
+
+  <footer id="composer" class="composer" hidden>
+    <form id="ask" class="ask">
+      <input id="question" type="text" autocomplete="off" placeholder="Ask a follow-up" aria-label="Ask a follow-up">
+      <button id="send" class="send" aria-label="Send" title="Send" disabled>
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 19V5M6 11l6-6 6 6"/></svg>
+      </button>
+    </form>
+    <p id="via" class="via"></p>
+  </footer>
+
+  <div id="toast" class="toast" role="status" hidden></div>
+
+  <script type="module" src="../../panel.js"></script>
+</body></html>

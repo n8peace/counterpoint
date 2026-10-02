@@ -53,7 +53,8 @@ No. All code ships in the package. Model responses are treated as text and data,
 ## Privacy policy URL
 https://github.com/n8peace/counterpoint/blob/master/PRIVACY.md
 
-## Assets still needed
-- Screenshots: 1280x800, up to 5
-- Small promo tile: 440x280
-- Icon: icons/icon128.png
+## Images (in store/assets)
+- Screenshots, in this order: screenshot-1-ring.png, screenshot-2-remote.png, screenshot-3-followup.png, screenshot-4-select.png, screenshot-5-free.png (1280x800)
+- Small promo tile: promo-tile-440x280.png
+- Store icon: icons/icon128.png
+- The sites in the screenshots are made up. Rebuild them from store/shots/ if the panel changes.
