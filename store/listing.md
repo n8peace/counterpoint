@@ -56,5 +56,6 @@ https://github.com/n8peace/counterpoint/blob/master/PRIVACY.md
 ## Images (in store/assets)
 - Screenshots, in this order: screenshot-1-ring.png, screenshot-2-remote.png, screenshot-3-followup.png, screenshot-4-select.png, screenshot-5-free.png (1280x800)
 - Small promo tile: promo-tile-440x280.png
+- Marquee promo tile: marquee-1400x560.png
 - Store icon: icons/icon128.png
 - The sites in the screenshots are made up. Rebuild them from store/shots/ if the panel changes.

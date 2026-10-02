@@ -1,0 +1,28 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><title>Counterpoint marquee</title>
+<style>
+  /* 1400x560 Chrome Web Store marquee promo tile */
+  html, body { margin: 0; width: 1400px; height: 560px; overflow: hidden; }
+  body {
+    background: #0b57d0; color: #fff;
+    font-family: "Google Sans", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    display: grid; grid-template-columns: 1fr 460px; align-items: center; padding: 0 0 0 96px; box-sizing: border-box;
+  }
+  svg { width: 132px; height: 53px; fill: none; stroke-linecap: round; margin-bottom: 28px; overflow: visible; }
+  .p { stroke: #a8c7fa; stroke-width: 5; }
+  .c { stroke: #fff; stroke-width: 6; }
+  h1 { margin: 0; font-size: 72px; font-weight: 500; letter-spacing: -0.02em; }
+  .tag { margin: 10px 0 0; font-size: 30px; color: #d3e3fd; }
+  .meta { margin: 28px 0 0; font-size: 19px; color: #a8c7fa; }
+  .shot { height: 560px; position: relative; }
+  iframe { position: absolute; top: 56px; left: 0; width: 400px; height: 620px; border: 0; border-radius: 20px; background: #fff; box-shadow: 0 24px 60px rgba(4, 30, 73, .45); }
+</style></head>
+<body>
+  <div>
+    <svg viewBox="0 0 40 16"><path class="p" d="M2 14 C 14 14, 26 2, 38 2"/><path class="c" d="M2 2 C 14 2, 26 14, 38 14"/></svg>
+    <h1>Counterpoint</h1>
+    <p class="tag">See the other side of any page</p>
+    <p class="meta">Free on Chrome's built-in AI · No account · Open source</p>
+  </div>
+  <div class="shot"><iframe src="panel-demo.html?scene=ring" title="Counterpoint panel"></iframe></div>
+</body></html>
