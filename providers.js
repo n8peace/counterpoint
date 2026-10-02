@@ -37,11 +37,16 @@ async function runChrome(system, user, _s, onStatus) {
   if (typeof LanguageModel === "undefined") {
     throw new Error("Chrome built-in AI isn't available in this Chrome. Update Chrome, or pick an API key provider.");
   }
-  const availability = await LanguageModel.availability();
+  const langs = {
+    expectedInputs: [{ type: "text", languages: ["en"] }],
+    expectedOutputs: [{ type: "text", languages: ["en"] }],
+  };
+  const availability = await LanguageModel.availability(langs);
   if (availability === "unavailable") {
     throw new Error("This device can't run Chrome's built-in model. Pick an API key provider instead.");
   }
   const session = await LanguageModel.create({
+    ...langs,
     initialPrompts: [{ role: "system", content: system }],
     monitor(m) {
       m.addEventListener("downloadprogress", (e) =>
