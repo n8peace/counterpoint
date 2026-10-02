@@ -174,8 +174,8 @@ async function think(live, s) {
       return state({
         ...view,
         meta: elapsed(secs),
-        hint: "You can close this panel. Chrome keeps downloading, and you can click Counterpoint again later.",
-        actions: [{ label: "See Chrome's download status", onClick: openComponents }],
+        hint: "Chrome only downloads its model when your computer has at least 22 GB of free disk space. If this doesn't finish, free up space and Chrome will start on its own. You can close this panel meanwhile.",
+        actions: [{ label: "Use an API key instead", onClick: () => openSettings(true) }],
       });
     }
     if (first) {
@@ -269,10 +269,6 @@ async function chromePreflight(live) {
   return true;
 }
 
-function openComponents() {
-  chrome.tabs?.create?.({ url: "chrome://components" });
-}
-
 // ---------- drawing ----------
 
 function show({ pending = false } = {}) {
@@ -316,7 +312,6 @@ function state({ title, body, progress, meta, hint, error, actions = [] }) {
       : ""}
     ${hint ? `<p>${esc(hint)}</p>` : ""}
     <div class="actions"></div>
-    ${loading && pct === null ? `<p class="fine">On that page, find <b>Optimization Guide On Device Model</b>. Any version other than 0.0.0.0 means the download is done.</p>` : ""}
     ${chromeScreen && chromeReport ? `<p class="diag">${esc(chromeReport)}</p>` : ""}
   </div>`;
   const row = out.querySelector(".actions");
