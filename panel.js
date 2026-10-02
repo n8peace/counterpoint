@@ -135,7 +135,10 @@ async function run(j, { fresh = false } = {}) {
     openSettings(true);
     return state({ title: `Add your ${p.label} key`, body: "Paste it in settings above, or pick Chrome built-in AI to run free on your computer." });
   }
-  if (s.provider === "chrome" && !(await chromePreflight(live))) return;
+  if (s.provider === "chrome") {
+    checking("Checking Chrome's built-in AI", "Making sure the free model is on this computer and ready to run.");
+    if (!(await chromePreflight(live))) return;
+  }
 
   convo = { key, provider: s.provider, model, messages: [{ role: "user", content: userMessage(j, p.maxChars) }] };
   await think(live, s);
@@ -288,6 +291,16 @@ function show({ pending = false } = {}) {
   $("composer").hidden = false;
   syncSend();
   if (rest.length) out.lastElementChild?.scrollIntoView({ block: "end", behavior: "smooth" });
+}
+
+// Shown while we ask Chrome about its model, which can take a few seconds.
+function checking(title, body) {
+  out.innerHTML = `<div class="state checking">
+    <div class="logo">${ICONS.mark}</div>
+    <h2>${esc(title)}</h2>
+    <p>${esc(body)}</p>
+    <div class="progress unknown"><span></span></div>
+  </div>`;
 }
 
 function skeleton(status) {

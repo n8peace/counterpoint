@@ -188,6 +188,9 @@ kbd { font: 500 11.5px var(--font); padding: 1px 6px; border-radius: 4px; backgr
 .state .pct, .state .diag { font-size: 12px; font-variant-numeric: tabular-nums; }
 .state .diag { opacity: .8; }
 
+.state.checking { animation: rise .2s ease both; }
+.state.checking .progress { max-width: 220px; }
+
 /* composer */
 .composer { padding: 8px 12px 10px; }
 .ask { display: flex; align-items: center; gap: 4px; padding: 4px 4px 4px 16px; border-radius: 24px; background: var(--container); }

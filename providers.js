@@ -56,8 +56,11 @@ export let chromeDetail = "";
 // "missing" | "unavailable" | "downloadable" | "downloading" | "available"
 export async function chromeModelState() {
   if (typeof LanguageModel === "undefined") return (chromeDetail = "LanguageModel missing"), "missing";
-  const full = await LanguageModel.availability(CHROME_LANGS);
-  const outOnly = full === "available" ? full : await LanguageModel.availability(CHROME_OUTPUT_ONLY);
+  // Ask both ways at once; each call can take a second or two.
+  const [full, outOnly] = await Promise.all([
+    LanguageModel.availability(CHROME_LANGS),
+    LanguageModel.availability(CHROME_OUTPUT_ONLY),
+  ]);
   chromeDetail = full === outOnly ? full : `${full} with input hint, ${outOnly} without`;
   chromeOptions = full !== "available" && outOnly === "available" ? CHROME_OUTPUT_ONLY : CHROME_LANGS;
   return full === "available" ? full : outOnly === "available" ? outOnly : full;
