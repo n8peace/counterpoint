@@ -59,7 +59,7 @@ async function runChrome(system, user, _s, onStatus) {
   }
   const downloading = (progress) => ({
     title: "Downloading Chrome's AI model",
-    body: "One-time download, a few GB. This can take 10 to 30 minutes. Your answer appears here when it's done.",
+    body: "One-time download, a few GB. Your answer appears here when it's done.",
     progress,
   });
   onStatus?.(state === "available" ? "Starting Chrome's model…" : downloading(null));

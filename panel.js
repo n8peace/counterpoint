@@ -109,9 +109,10 @@ async function run(job) {
     state({
       ...view,
       moving: !downloading,
-      meta: secs >= 3 ? `${secs}s` : "",
+      meta: downloading ? elapsed(secs) : secs >= 3 ? `${secs}s` : "",
+      actions: downloading ? [{ label: "See Chrome's download status", onClick: openComponents }] : [],
       hint: downloading
-        ? "You can keep browsing. Leave this panel open until it finishes."
+        ? "You can close this panel. Chrome keeps downloading, and you can click Counterpoint again later."
         : s.provider === "chrome" && secs >= 45
         ? "Taking long? Relaunch Chrome, or add an API key in settings for a faster answer."
         : "",
@@ -187,16 +188,19 @@ async function chromePreflight(job) {
 }
 
 function state({ title, body, progress, meta, hint, moving, error, actions = [] }) {
+  const loading = progress !== undefined;
   const pct = typeof progress === "number" ? Math.round(progress * 100) : null;
   out.innerHTML = `<div class="state${error ? " error" : ""}">
-    ${error ? "" : mark(moving || progress !== undefined ? "moving" : "")}
+    ${error ? "" : mark(moving || loading ? "moving" : "")}
     ${title ? `<h2>${esc(title)}</h2>` : ""}
-    <p class="${title ? "" : "lead"}">${esc(body)}${meta ? ` <span class="meta">${esc(meta)}</span>` : ""}</p>
-    ${progress === undefined ? "" : pct === null
-      ? `<div class="progress unknown"><span></span></div>`
-      : `<div class="progress"><span style="width:${pct}%"></span></div><p class="pct">${pct}%</p>`}
+    <p class="${title ? "" : "lead"}">${esc(body)}${meta && !loading ? ` <span class="meta">${esc(meta)}</span>` : ""}</p>
+    ${loading
+      ? `<div class="progress${pct === null ? " unknown" : ""}"><span${pct === null ? "" : ` style="width:${pct}%"`}></span></div>
+         <p class="pct">${pct === null ? "" : `${pct}% · `}${esc(meta || "")}${pct === null ? " · Chrome doesn't report a percent" : ""}</p>`
+      : ""}
     ${hint ? `<p>${esc(hint)}</p>` : ""}
     <div class="actions"></div>
+    ${loading && pct === null ? `<p class="fine">On that page, find <b>Optimization Guide On Device Model</b>. Any version other than 0.0.0.0 means the download is done.</p>` : ""}
   </div>`;
   const row = out.querySelector(".actions");
   for (const a of actions) {
@@ -279,6 +283,15 @@ function esc(s) {
 
 function host(url) {
   try { return new URL(url).hostname.replace(/^www\./, ""); } catch { return url; }
+}
+
+function elapsed(secs) {
+  return secs < 60 ? `${secs}s so far` : `${Math.floor(secs / 60)} min so far`;
+}
+
+// Chrome's own page for its built-in model download. Look for "Optimization Guide On Device Model".
+function openComponents() {
+  chrome.tabs?.create?.({ url: "chrome://components" });
 }
 
 function badge(text) {

@@ -173,7 +173,8 @@ kbd { font: 500 12px var(--sans); padding: 2px 6px; border: 1px solid var(--rule
 .progress span { display: block; height: 100%; background: var(--cobalt); border-radius: 2px; transition: width .4s ease; }
 .progress.unknown span { width: 30%; animation: sweep 1.5s ease-in-out infinite; }
 @keyframes sweep { from { transform: translateX(-100%); } to { transform: translateX(340%); } }
-.pct { font-size: 12px; font-variant-numeric: tabular-nums; }
+.state .pct { font-size: 12.5px; font-variant-numeric: tabular-nums; margin-top: -2px; }
+.state .fine { margin-top: 2px; }
 
 /* footer */
 .foot {
