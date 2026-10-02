@@ -1,10 +1,11 @@
-import { PROVIDERS, chromeModelState } from "./providers.js";
+import { PROVIDERS, chromeModelState, chromeDetail } from "./providers.js";
 import { SYSTEM, userMessage } from "./prompt.js";
 
 const $ = (id) => document.getElementById(id);
 const out = $("out");
 const MIN_CHROME = 138;
 let current = null;
+let chromeReport = ""; // e.g. "Chrome 152 · model: downloading"
 
 // The mark: the page's line and the other side's line, moving in contrary motion.
 const mark = (cls = "") =>
@@ -144,6 +145,7 @@ async function run(job) {
 async function chromePreflight(job) {
   const st = await chromeModelState();
   const version = Number(navigator.userAgent.match(/Chrome\/(\d+)/)?.[1] || 0);
+  chromeReport = `Chrome ${version || "?"} · model: ${chromeDetail}`;
   const useKey = { label: "Use an API key instead", onClick: () => openSettings(true) };
   const again = { label: "Check again", onClick: () => run(job) };
 
@@ -152,13 +154,13 @@ async function chromePreflight(job) {
     state(
       tooOld
         ? {
-            title: "Chrome update required",
+            title: "Chrome update required", details: chromeReport,
             body: `Free mode uses Chrome's built-in AI, which needs Chrome ${MIN_CHROME} or newer.${version ? ` You have Chrome ${version}.` : ""}`,
             hint: "To update, open the Chrome menu (⋮), choose Help, then About Google Chrome, and click Relaunch.",
             actions: [{ ...again, primary: true }, useKey],
           }
         : {
-            title: "Chrome's built-in AI is turned off",
+            title: "Chrome's built-in AI is turned off", details: chromeReport,
             body: `Chrome ${version} supports it, but it isn't on here. If Chrome shows "Relaunch to update", relaunch first.`,
             hint: "On a work or school computer, your organization may have turned it off.",
             actions: [again, { ...useKey, primary: true }],
@@ -168,7 +170,7 @@ async function chromePreflight(job) {
   }
   if (st === "unavailable") {
     state({
-      title: "This computer can't run Chrome's AI",
+      title: "This computer can't run Chrome's AI", details: chromeReport,
       body: "Chrome's model needs about 22 GB of free disk space, plus either a graphics chip with more than 4 GB of memory or 16 GB of RAM.",
       hint: "Free up disk space and check again, or use your own API key.",
       actions: [again, { ...useKey, primary: true }],
@@ -178,7 +180,7 @@ async function chromePreflight(job) {
   // Chrome only starts the download from a click inside this panel.
   if (st === "downloadable" && !navigator.userActivation.isActive) {
     state({
-      title: "One-time setup",
+      title: "One-time setup", details: chromeReport,
       body: "Free mode runs on Chrome's built-in AI. Chrome downloads the model once (a few GB). After that it runs on your computer, offline, at no cost.",
       actions: [{ label: "Download model and run", primary: true, onClick: () => run(job) }, useKey],
     });
@@ -187,7 +189,7 @@ async function chromePreflight(job) {
   return true;
 }
 
-function state({ title, body, progress, meta, hint, moving, error, actions = [] }) {
+function state({ title, body, progress, meta, hint, moving, error, actions = [], details }) {
   const loading = progress !== undefined;
   const pct = typeof progress === "number" ? Math.round(progress * 100) : null;
   out.innerHTML = `<div class="state${error ? " error" : ""}">
@@ -200,6 +202,7 @@ function state({ title, body, progress, meta, hint, moving, error, actions = [] 
       : ""}
     ${hint ? `<p>${esc(hint)}</p>` : ""}
     <div class="actions"></div>
+    ${details || (loading && chromeReport) ? `<p class="fine diag">${esc(details || chromeReport)}</p>` : ""}
     ${loading && pct === null ? `<p class="fine">On that page, find <b>Optimization Guide On Device Model</b>. Any version other than 0.0.0.0 means the download is done.</p>` : ""}
   </div>`;
   const row = out.querySelector(".actions");

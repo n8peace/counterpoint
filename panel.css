@@ -190,3 +190,4 @@ kbd { font: 500 12px var(--sans); padding: 2px 6px; border: 1px solid var(--rule
   *, *::before { animation: none !important; transition: none !important; }
   .progress.unknown span { width: 100%; opacity: .4; }
 }
+.diag { font-variant-numeric: tabular-nums; opacity: .8; }
