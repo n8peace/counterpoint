@@ -29,7 +29,11 @@ Counterpoint has no server and costs nothing to run. Pick one:
 
 Keys stay in your browser (`chrome.storage.local`) and go only to that provider.
 
-## Install (developer mode)
+## Install
+
+**[Get Counterpoint from the Chrome Web Store](https://chromewebstore.google.com/detail/pmdniabenkibdhapcapofjplbfaopmfk)**
+
+## Install from source (developer mode)
 
 1. Open `chrome://extensions`.
 2. Turn on **Developer mode** (top right).
