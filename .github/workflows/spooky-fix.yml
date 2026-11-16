@@ -1,0 +1,48 @@
+name: Spooky fix
+on:
+  workflow_dispatch:
+    inputs:
+      project:
+        description: Project
+        required: true
+        type: string
+      check:
+        description: Check
+        required: true
+        type: string
+      what:
+        description: What broke
+        required: true
+        type: string
+      link:
+        description: Spooky jobs link
+        required: true
+        type: string
+permissions:
+  contents: write
+  pull-requests: write
+concurrency:
+  group: spooky-fix
+  cancel-in-progress: false
+jobs:
+  fix:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: anthropics/claude-code-action@v1
+        with:
+          # Runs on your Claude plan: save the output of `claude setup-token` as this repository secret.
+          claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          # This run's own GitHub token, so the action needs no extra GitHub app or OIDC permission.
+          github_token: ${{ github.token }}
+          # Spooky's GitHub app starts this run, and the action refuses bots unless named here.
+          allowed_bots: spooky-particles
+          # Or bill an API key instead: anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
+          claude_args: --max-turns 60 --allowedTools "Read,Edit,Write,Grep,Glob,Bash(git:*),Bash(npm test:*),Bash(npm run:*),Bash(npx:*),Bash(pnpm:*),Bash(yarn:*),Bash(bun:*),Bash(make:*),Bash(pytest:*),Bash(python3 -m pytest:*),Bash(python -m pytest:*),Bash(python3 -m unittest:*),Bash(python -m unittest:*),Bash(uv run:*),Bash(poetry run:*),Bash(cargo:*),Bash(go:*),Bash(ls:*),Bash(grep:*),Bash(sed:*),Bash(curl:*),Bash(sleep:*)"
+          prompt: |
+            Spooky reports a broken check in ${{ inputs.project }}.
+            Check: ${{ inputs.check }}
+            What happened: ${{ inputs.what }}
+            Jobs: ${{ inputs.link }}
+            Read .spooky/lessons.md first if it exists. Find the cause in the code, logs, and recent commits. Make the smallest fix and run this project's own tests. Commit and ship only as CLAUDE.md or AGENTS.md allows; otherwise open a pull request. Add one dated line to .spooky/lessons.md with the cause and fix. Never print secrets.
